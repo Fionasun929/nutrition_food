@@ -52,6 +52,11 @@ class UserFood(db.Model):
     date = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+# ====================== 前端页面路由 ======================
+@app.route('/')
+def index():
+    return render_template('index.html')
+
 # ====================== 工具函数 ======================
 def detect_encoding(file_path):
     with open(file_path, 'rb') as f:
@@ -895,4 +900,4 @@ if __name__ == '__main__':
         db.create_all()
         load_type_csv()  # 启动时加载type.csv
         init_food()
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)
