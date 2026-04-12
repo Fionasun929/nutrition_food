@@ -7,17 +7,22 @@ import pandas as pd
 import numpy as np
 import re
 import os
+from dotenv import load_dotenv
 import json
 import chardet
 import requests
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
+load_dotenv()
 app = Flask(__name__)
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///nutrition.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JSON_AS_ACSII'] = False
 db = SQLAlchemy(app)
-
+with app.app_context():
+    db.create_all()
+    print("Neon数据库表创建成功")
 # 全局存储type.csv营养标准（完全适配你的中文列名）
 TYPE_NUTRITION_STANDARD = {}
 
