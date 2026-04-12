@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>营养智能建议</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <div class="header"><h1>🎯 营养智能分析与建议</h1></div>
+
+    <div class="card">
+        <h2>📉 营养缺口分析（与标准偏差百分比）</h2>
+        <div class="chart-box" id="gapChart" style="height:320px"></div>
+    </div>
+
+    <div class="card">
+        <h2>📊 食材营养贡献排序（多因子模型）</h2>
+        <div class="chart-grid">
+            <div class="chart-box chart-normal" id="chartEnergy"></div>
+            <div class="chart-box" id="chartTotal"></div>
+            <div class="chart-box chart-normal" id="chartProtein"></div>
+            <div class="chart-box chart-normal" id="chartFat"></div>
+            <div class="chart-box chart-normal" id="chartCarbs"></div>
+            <div class="chart-box chart-normal" id="chartSodium"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>✅ 智能推荐食材</h2>
+        <div id="recList"></div>
+    </div>
+
+    <div style="text-align:center;margin-top:20px">
+        <a href="index.html" class="btn">🏠 返回首页</a>
+    </div>
+</div>
+
+<script>
+const u = JSON.parse(localStorage.getItem('currentUser'));
+if(!u)location.href='login.html';
+const today = new Date().toLocaleDateString().replace(/\//g, '-');
+
+async function load(){
+    const res = await fetch('http://127.0.0.1:5000/get_user_foods', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id:u.userId, date:today})
+    });
+    const foods = (await res.json()).data || [];
+
+    const adv = await fetch('http://127.0.0.1:5000/get_advice_data', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id:u.userId, foods:foods})
+    });
+    const d = await adv.json();
+    window.data = d;
+
+    const gapData = [
+        { name: '热量', value: (d.gap.energy / d.target.energy * 100).toFixed(1), real: d.gap.energy },
+        { name: '蛋白质', value: (d.gap.protein / d.target.protein * 100).toFixed(1), real: d.gap.protein },
+        { name: '脂肪', value: (d.gap.fat / d.target.fat * 100).toFixed(1), real: d.gap.fat },
+        { name: '碳水', value: (d.gap.carbs / d.target.carbs * 100).toFixed(1), real: d.gap.carbs },
+        { name: '钠', value: (d.gap.sodium / d.target.sodium * 100).toFixed(1), real: d.gap.sodium }
+    ];
+    const gapChart = echarts.init(document.getElementById('gapChart'));
+    gapChart.setOption({
+        tooltip: { trigger: 'axis', formatter: params => `${params[0].name}<br/>差值：${gapData[params[0].dataIndex].real}` },
+        xAxis: { type: 'category', data: gapData.map(i => i.name), axisLabel: { fontSize: 14 } },
+        yAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
+        series: [{
+            data: gapData.map(i => i.value), type: 'bar', itemStyle: { color: '#667eea' },
+            label: { show: true, position: 'top', formatter: '{c}%', fontSize: 13, fontWeight: 600 }
+        }]
+    });
+
+    const foodList = d.foods;
+    const charts = [
+        { id: 'chartEnergy', key: 'energy_pct', title: '热量贡献', color: '#ff9100' },
+        { id: 'chartTotal', key: 'score', title: '综合重要性', color: '#764ba2' },
+        { id: 'chartProtein', key: 'protein_pct', title: '蛋白质贡献', color: '#38a169' },
+        { id: 'chartFat', key: 'fat_pct', title: '脂肪贡献', color: '#f56565' },
+        { id: 'chartCarbs', key: 'carbs_pct', title: '碳水贡献', color: '#4299e1' },
+        { id: 'chartSodium', key: 'sodium_pct', title: '钠贡献', color: '#e53e3e' }
+    ];
+
+    charts.forEach(item => {
+        const sorted = [...foodList].sort((a, b) => b[item.key] - a[item.key]);
+        const displayNames = sorted.map(i => i.name.length > 8 ? i.name.substring(0, 8) : i.name).reverse();
+        const fullNames = sorted.map(i => i.name).reverse();
+        const values = sorted.map(i => i[item.key].toFixed(1)).reverse();
+        const chart = echarts.init(document.getElementById(item.id));
+        chart.setOption({
+            title: { text: item.title, left: 'center', textStyle: { fontSize: 14 } },
+            tooltip: { trigger: 'axis', formatter: params => `${fullNames[params[0].dataIndex]}<br/>贡献度：${params[0].value}%` },
+            grid: { left: '20%', right: '16%', top: '15%', bottom: '10%' },
+            xAxis: { type: 'value' },
+            yAxis: { type: 'category', data: displayNames, axisLabel: { fontSize: 13 } },
+            series: [{ data: values, type: 'bar', itemStyle: { color: item.color }, label: { show: true, position: 'right', formatter: '{c}%' } }]
+        });
+    });
+
+    let html = '';
+    const gap = d.gap;
+    const allFood = d.foods;
+    const rec = d.recommend;
+
+    // 1. 原补充逻辑
+    const keys = Object.keys(rec);
+    for (let key of keys) {
+        if (key === "protein" && gap.protein > 0) {
+            html += `<div class="recommend-card">
+                <div class="recommend-title">🥩 推荐补充蛋白质</div>
+                <div class="recommend-items">${rec.protein.map(i => `<span class="recommend-tag">${i.name} <strong>${i.protein}g</strong></span>`).join('')}</div>
+            </div>`;
+        }
+        if (key === "fat" && gap.fat > 0) {
+            html += `<div class="recommend-card">
+                <div class="recommend-title">🧈 推荐补充脂肪</div>
+                <div class="recommend-items">${rec.fat.map(i => `<span class="recommend-tag">${i.name} <strong>${i.fat}g</strong></span>`).join('')}</div>
+            </div>`;
+        }
+        if (key === "carbs" && gap.carbs > 0) {
+            html += `<div class="recommend-card">
+                <div class="recommend-title">🍞 推荐补充碳水</div>
+                <div class="recommend-items">${rec.carbs.map(i => `<span class="recommend-tag">${i.name} <strong>${i.carbs}g</strong></span>`).join('')}</div>
+            </div>`;
+        }
+        if (key === "energy" && gap.energy > 0) {
+            html += `<div class="recommend-card">
+                <div class="recommend-title">🔥 推荐补充热量</div>
+                <div class="recommend-items">${rec.energy.map(i => `<span class="recommend-tag">${i.name} <strong>${i.energy}kcal</strong></span>`).join('')}</div>
+            </div>`;
+        }
+    }
+
+    // ====================== 【唯一修改：按实际摄入量 <500 才补钠】 ======================
+    // 实际钠摄入量 <500mg → 推荐补充；缺口<0（超标）→ 不显示补充
+    if (d.sodium_intake < 500 && gap.sodium >= 0) {
+        html += `<div class="recommend-card" style="border-left-color:#4299e1">
+            <div class="recommend-title">🧂 钠摄入偏低，建议适量补充</div>
+            <div class="recommend-items">
+                <span class="recommend-tag">淡盐水 <strong>500ml</strong></span>
+                <span class="recommend-tag">海带 <strong>10-20g</strong></span>
+                <span class="recommend-tag">紫菜 <strong>5-10g</strong></span>
+            </div>
+        </div>`;
+    }
+
+    // 超标减少逻辑
+    function getTopFood(nutriKey) {
+        return [...allFood].sort((a, b) => b[nutriKey] - a[nutriKey])[0] || null;
+    }
+
+    if (gap.energy < 0) {
+        const top = getTopFood('energy');
+        if (top) {
+            const maxReduce = (Math.abs(gap.energy) / top.energy) * top.weight;
+            const finalReduce = Math.min(maxReduce, top.weight);
+            html += `<div class="recommend-card" style="border-left-color:#e53e3e">
+                <div class="recommend-title">🔥 热量超标，减少摄入</div>
+                <div class="recommend-items"><span class="recommend-tag">${top.name} <strong style="color:#e53e33">-${finalReduce.toFixed(1)}g</strong></span></div>
+            </div>`;
+        }
+    }
+    if (gap.protein < 0) {
+        const top = getTopFood('protein');
+        if (top) {
+            const maxReduce = (Math.abs(gap.protein) / top.protein) * top.weight;
+            const finalReduce = Math.min(maxReduce, top.weight);
+            html += `<div class="recommend-card" style="border-left-color:#e53e3e">
+                <div class="recommend-title">🥩 蛋白质超标，减少摄入</div>
+                <div class="recommend-items"><span class="recommend-tag">${top.name} <strong style="color:#e53e33">-${finalReduce.toFixed(1)}g</strong></span></div>
+            </div>`;
+        }
+    }
+    if (gap.fat < 0) {
+        const top = getTopFood('fat');
+        if (top) {
+            const maxReduce = (Math.abs(gap.fat) / top.fat) * top.weight;
+            const finalReduce = Math.min(maxReduce, top.weight);
+            html += `<div class="recommend-card" style="border-left-color:#e53e3e">
+                <div class="recommend-title">🧈 脂肪超标，减少摄入</div>
+                <div class="recommend-items"><span class="recommend-tag">${top.name} <strong style="color:#e53e33">-${finalReduce.toFixed(1)}g</strong></span></div>
+            </div>`;
+        }
+    }
+    if (gap.carbs < 0) {
+        const top = getTopFood('carbs');
+        if (top) {
+            const maxReduce = (Math.abs(gap.carbs) / top.carbs) * top.weight;
+            const finalReduce = Math.min(maxReduce, top.weight);
+            html += `<div class="recommend-card" style="border-left-color:#e53e3e">
+                <div class="recommend-title">🍞 碳水超标，减少摄入</div>
+                <div class="recommend-items"><span class="recommend-tag">${top.name} <strong style="color:#e53e33">-${finalReduce.toFixed(1)}g</strong></span></div>
+            </div>`;
+        }
+    }
+    
+    // 钠只有 <0 才显示超标
+    if (gap.sodium < 0) {
+        const top = getTopFood('sodium');
+        if (top) {
+            const maxReduce = (Math.abs(gap.sodium) / top.sodium) * top.weight;
+            const finalReduce = Math.min(maxReduce, top.weight);
+            html += `<div class="recommend-card" style="border-left-color:#e53e3e">
+                <div class="recommend-title">⚠️ 钠超标，减少摄入</div>
+                <div class="recommend-items"><span class="recommend-tag">${top.name} <strong style="color:#e53e33">-${finalReduce.toFixed(1)}g</strong></span></div>
+            </div>`;
+        }
+    }
+
+    if (html === '') html = `<div class="recommend-card" style="text-align:center;color:#38a169;font-weight:600">✅ 营养均衡，饮食结构非常健康！</div>`;
+    document.getElementById('recList').innerHTML = html;
+
+    window.addEventListener('resize', () => {
+        gapChart.resize();
+        charts.forEach(c => echarts.getInstanceByDom(document.getElementById(c.id)).resize());
+    });
+}
+
+load();
+</script>
+</body>
+</html>
+

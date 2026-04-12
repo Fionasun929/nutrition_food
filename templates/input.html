@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>食材录入</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header"><h1>🥬 食材录入</h1></div>
+    <div class="card">
+        <h3>➕ 添加食材</h3>
+        <div class="form-group">
+            <label>食材名称 / 食物编码</label>
+            <div id="suggest-container">
+                <input type="text" id="kw" placeholder="输入食材名称 或 食物编码搜索" autocomplete="off">
+                <div id="suggest"></div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>重量 (克)</label>
+            <input type="number" id="w" value="100" min="1" step="1">
+        </div>
+
+        <div class="button-row">
+            <button class="btn" onclick="add()" id="addBtn" disabled>➕ 添加食材</button>
+            <button class="btn btn-camera" onclick="openImageUpload()">📷 图片识别</button>
+        </div>
+        <input type="file" id="imageFile" accept="image/*" style="display:none;">
+
+        <div class="card" style="margin-top:16px;padding:16px;">
+            <h3>📊 核心营养预览（每100克）</h3>
+            <div id="nutriPreview" class="nutri-preview">
+                <div class="nutri-item">热量：<span id="previewKcal">--</span> kcal</div>
+                <div class="nutri-item">蛋白质：<span id="previewPro">--</span> g</div>
+                <div class="nutri-item">脂肪：<span id="previewFat">--</span> g</div>
+                <div class="nutri-item">碳水：<span id="previewCar">--</span> g</div>
+                <div class="nutri-item">钠：<span id="previewNa">--</span> mg</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📋 今日食谱（可拖拽食材切换餐次）</h3>
+
+        <div class="meal-section" data-meal="早餐">
+            <div class="meal-title">🍳 早餐</div>
+            <div id="breakfastList" class="food-items"></div>
+        </div>
+
+        <div class="meal-section" data-meal="午餐">
+            <div class="meal-title">🍜 午餐</div>
+            <div id="lunchList" class="food-items"></div>
+        </div>
+
+        <div class="meal-section" data-meal="晚餐">
+            <div class="meal-title">🍲 晚餐</div>
+            <div id="dinnerList" class="food-items"></div>
+        </div>
+
+        <div class="meal-section" data-meal="加餐">
+            <div class="meal-title">🍎 加餐</div>
+            <div id="snackList" class="food-items"></div>
+        </div>
+    </div>
+
+    <div class="btn-group">
+        <a href="index.html" class="btn">返回首页</a>
+        <a href="result.html" class="btn btn-analysis">📈 分析报告</a>
+        <button class="btn btn-danger" style="margin-left:10px" onclick="clearAll()">清空所有食材</button>
+    </div>
+</div>
+
+<!-- 弹窗 -->
+<div id="modal" class="modal" style="display:none;"></div>
+
+<script>
+// ====================== 你原有代码 100% 保留 ======================
+let currentUser = JSON.parse(localStorage.getItem('currentUser'));
+let selectedFood = null;
+let foodList = [];
+const today = new Date().toLocaleDateString().replace(/\//g, '-');
+
+// ====================== 图片识别 新增变量 ======================
+let recognizeQueue = [];
+let currentIndex = 0;
+
+window.onload = function() {
+    if(!currentUser) {
+        location.href = 'login.html';
+        return;
+    }
+    document.getElementById('kw').addEventListener('input', debounce(searchFood, 300));
+    document.addEventListener('click', function(e) {
+        if(!document.getElementById('suggest-container').contains(e.target)) {
+            document.getElementById('suggest').innerHTML = '';
+        }
+    });
+    loadUserFoods();
+    initDrag();
+
+    // 绑定图片识别
+    document.getElementById('imageFile').addEventListener('change', doRecognize);
+};
+
+// 防抖
+function debounce(func, delay) {
+    let timer = null;
+    return function() {
+        clearTimeout(timer);
+        timer = setTimeout(() => func.apply(this, arguments), delay);
+    };
+}
+
+// 搜索（完全不变）
+async function searchFood() {
+    const keyword = document.getElementById('kw').value.trim();
+    const suggestBox = document.getElementById('suggest');
+    suggestBox.innerHTML = '';
+    if(!keyword) {
+        selectedFood = null; disableAddBtn(); clearNutriPreview(); return;
+    }
+    try {
+        const res = await fetch('http://127.0.0.1:5000/search_food', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ keyword, user_id: currentUser.userId })
+        });
+        const result = await res.json();
+        const foods = result.data || [];
+        if(foods.length === 0) {
+            suggestBox.innerHTML = '<div class="empty-tip">未找到相关食材</div>';
+            selectedFood = null; disableAddBtn(); clearNutriPreview(); return;
+        }
+        foods.forEach(food => {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <strong>${food.name}</strong>
+                <div style="font-size:12px;color:#666;margin-top:4px">
+                    编码：${food.code}｜热量：${food.energy}kcal｜蛋白：${food.protein}g
+                </div>
+            `;
+            div.onclick = () => {
+                selectedFood = food;
+                document.getElementById('kw').value = food.name;
+                suggestBox.innerHTML = '';
+                showNutriPreview(food);
+                enableAddBtn();
+            };
+            suggestBox.appendChild(div);
+        });
+    } catch (err) {
+        suggestBox.innerHTML = '<div class="empty-tip" style="color:red">搜索失败</div>';
+    }
+}
+
+function showNutriPreview(food) {
+    document.getElementById('previewKcal').textContent = food.energy || 0;
+    document.getElementById('previewPro').textContent = food.protein || 0;
+    document.getElementById('previewFat').textContent = food.fat || 0;
+    document.getElementById('previewCar').textContent = food.carbs || 0;
+    document.getElementById('previewNa').textContent = food.sodium || 0;
+}
+function clearNutriPreview() {
+    document.querySelectorAll('#nutriPreview span').forEach(s => s.textContent = '--');
+}
+function enableAddBtn() {
+    const b = document.getElementById('addBtn'); b.disabled=false; b.style.opacity='1';
+}
+function disableAddBtn() {
+    const b = document.getElementById('addBtn'); b.disabled=true; b.style.opacity='0.6';
+}
+
+// 添加食材（默认归到早餐）
+async function add() {
+    if(!selectedFood) { alert('请选择食材'); return; }
+    const weight = document.getElementById('w').value;
+    if(weight<1) { alert('重量≥1g'); return; }
+    await fetch('http://127.0.0.1:5000/save_user_food', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            user_id: currentUser.userId,
+            food_id: selectedFood.id,
+            name: selectedFood.name,
+            weight,
+            meal: '早餐', // 默认进早餐
+            date: today
+        })
+    });
+    loadUserFoods();
+    document.getElementById('kw').value='';
+    document.getElementById('w').value='100';
+    selectedFood=null;
+    disableAddBtn();
+    clearNutriPreview();
+    alert('添加成功');
+}
+
+// 加载 + 渲染
+async function loadUserFoods() {
+    const res = await fetch('http://127.0.0.1:5000/get_user_foods', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id:currentUser.userId, date:today})
+    });
+    const r = await res.json();
+    foodList = r.data || [];
+    renderFoodList();
+}
+
+function renderFoodList() {
+    const grouped = {早餐:[],午餐:[],晚餐:[],加餐:[]};
+    foodList.forEach(it => grouped[it.meal].push(it));
+    const map = {早餐:'breakfastList',午餐:'lunchList',晚餐:'dinnerList',加餐:'snackList'};
+    for(let m in grouped) {
+        const el = document.getElementById(map[m]);
+        const list = grouped[m];
+        if(!list.length) { el.innerHTML = '<div class="empty-tip">暂无食材</div>'; continue; }
+        let html = '';
+        list.forEach(it => {
+            const r = it.weight/100;
+            const e = (it.foodData.energy*r).toFixed(1);
+            const p = (it.foodData.protein*r).toFixed(1);
+            const f = (it.foodData.fat*r).toFixed(1);
+            const c = (it.foodData.carbs*r).toFixed(1);
+            const s = (it.foodData.sodium*r).toFixed(1);
+            html += `
+            <div class="food-item" draggable="true" data-id="${it.id}">
+                <div>
+                    <div><strong>${it.name}</strong> ${it.weight}g</div>
+                    <div style="font-size:12px;color:#666">
+                        热量：${e}kcal｜蛋白：${p}g｜脂肪：${f}g｜碳水：${c}g｜钠：${s}mg
+                    </div>
+                </div>
+                <button class="btn btn-danger" onclick="del(${it.id})">删除</button>
+            </div>`;
+        });
+        el.innerHTML = html;
+    }
+}
+
+// ====================== 拖拽核心逻辑（完全不变） ======================
+function initDrag() {
+    const zones = document.querySelectorAll('.meal-section');
+
+    document.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('food-item')) {
+            e.dataTransfer.setData('id', e.target.dataset.id);
+            e.target.style.opacity = '0.5';
+        }
+    });
+
+    document.addEventListener('dragend', (e) => {
+        if (e.target.classList.contains('food-item')) {
+            e.target.style.opacity = '1';
+        }
+    });
+
+    zones.forEach(el => {
+        el.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            el.classList.add('highlight');
+        });
+
+        el.addEventListener('dragleave', () => {
+            el.classList.remove('highlight');
+        });
+
+        el.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            el.classList.remove('highlight');
+            const foodId = e.dataTransfer.getData('id');
+            const targetMeal = el.dataset.meal;
+
+            await fetch('http://127.0.0.1:5000/update_food_meal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: foodId, meal: targetMeal })
+            });
+
+            loadUserFoods();
+        });
+    });
+}
+
+// 删除 / 清空（完全不变）
+async function del(id) {
+    if(!confirm('确定删除？')) return;
+    await fetch('http://127.0.0.1:5000/delete_user_food', {
+        method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})
+    });
+    loadUserFoods();
+}
+async function clearAll() {
+    if(!confirm('确定清空今日所有？')) return;
+    await fetch('http://127.0.0.1:5000/clear_user_foods', {
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id:currentUser.userId, date:today})
+    });
+    loadUserFoods();
+    alert('已清空');
+}
+
+// ====================== 【新增】图片识别功能（不影响原有任何代码） ======================
+function openImageUpload() {
+    document.getElementById('imageFile').click();
+}
+
+// 图片转base64
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+    });
+}
+
+// 执行识别
+async function doRecognize(e) {
+    const file = e.target.files[0];
+    if(!file) return;
+
+    try {
+        alert("正在识别图片...");
+        const base64 = await fileToBase64(file);
+        
+        const res = await fetch('http://127.0.0.1:5000/recognize_food', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64 })
+        });
+
+        const data = await res.json();
+        console.log("百度识别结果：", data);
+
+        if(data.code !== 1) {
+            alert("识别失败：" + data.msg);
+            return;
+        }
+
+        recognizeQueue = data.data || [];
+        currentIndex = 0;
+
+        if(recognizeQueue.length === 0) {
+            alert("未识别到食材");
+            return;
+        }
+
+        showModal();
+    } catch (err) {
+        console.error(err);
+        alert("识别请求异常");
+    }
+}
+
+// 弹窗（带重量输入）
+function showModal() {
+    if (currentIndex >= recognizeQueue.length) {
+        document.getElementById('modal').innerHTML = `
+            <div class="modal-box">
+                <p>识别完成</p>
+                <button class="modal-btn btn-yes" onclick="closeModal()">确定</button>
+            </div>
+        `;
+        document.getElementById('modal').style.display = "flex";
+        return;
+    }
+
+    const item = recognizeQueue[currentIndex];
+    document.getElementById('modal').innerHTML = `
+        <div class="modal-box">
+            <h3>识别结果</h3>
+            <p>食材：${item.name}</p>
+            <div style="margin:12px 0;">
+                <label>重量（克）</label>
+                <input type="number" id="modalWeight" 
+                       value="100" min="1" step="1" 
+                       style="width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid #ddd;">
+            </p>
+            <div style="display:flex; gap:8px; justify-content:center; margin-top:8px;">
+                <button class="modal-btn btn-yes" onclick="chooseYes()">录入</button>
+                <button class="modal-btn btn-no" onclick="chooseNo()">取消</button>
+            </div>
+        </div>
+    `;
+    document.getElementById('modal').style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById('modal').style.display = "none";
+}
+
+async function chooseYes() {
+    const item = recognizeQueue[currentIndex];
+    if (!item.food_id) {
+        alert("该食材未在库中，无法录入");
+        currentIndex++;
+        showModal();
+        return;
+    }
+
+    // 从弹窗输入框获取重量
+    const weightInput = document.getElementById('modalWeight');
+    let weight = parseInt(weightInput.value, 10);
+    if (isNaN(weight) || weight < 1) {
+        weight = 100;
+    }
+
+    await fetch('http://127.0.0.1:5000/save_user_food', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            user_id: currentUser.userId,
+            food_id: item.food_id,
+            name: item.name,
+            weight: weight,
+            meal: "早餐",
+            date: today
+        })
+    });
+
+    loadUserFoods();
+    currentIndex++;
+    showModal();
+}
+
+function chooseNo() {
+    document.getElementById('kw').value = recognizeQueue[currentIndex].name.replace("（未匹配）","");
+    currentIndex++;
+    showModal();
+}
+</script>
+</body>
+</html>
