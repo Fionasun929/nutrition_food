@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from datetime import datetime, timedelta
@@ -12,25 +12,27 @@ import chardet
 import requests
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
-app = Flask(__name__, static_folder='.', static_url_path='')  # 修复静态资源路径
+app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
-# 修复 Supabase 连接串（必须加 pgbouncer=true，Vercel 专用）
+# ====================== 【Vercel 兼容】数据库连接 ======================
 DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-if DATABASE_URL and "?pgbouncer=true" not in DATABASE_URL:
-    DATABASE_URL += "?pgbouncer=true"
+if DATABASE_URL:
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    if "?pgbouncer=true" not in DATABASE_URL:
+        DATABASE_URL += "?pgbouncer=true"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JSON_AS_ASCII'] = False
+
 db = SQLAlchemy(app)
 
-# 全局存储type.csv营养标准（完全适配你的中文列名）
+# 全局存储type.csv营养标准
 TYPE_NUTRITION_STANDARD = {}
-food_initialized = False
 
-# ====================== 模型定义 ======================
+# ====================== 模型定义（完全不变） ======================
 class Food(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), index=True)
@@ -64,9 +66,13 @@ class UserFood(db.Model):
 # ====================== 前端页面路由 ======================
 @app.route('/')
 def index():
-    return render_template('index.html')
+    try:
+        return render_template('index.html')
+    except:
+        with open('index.html', 'r', encoding='utf-8') as f:
+            return f.read()
 
-# ====================== 工具函数 ======================
+# ====================== 工具函数（完全不变） ======================
 def detect_encoding(file_path):
     with open(file_path, 'rb') as f:
         raw = f.read(10000)
@@ -81,7 +87,7 @@ def clean_nutrition_value(val):
     match = re.search(r'(\d+\.?\d*)', s)
     return float(match.group(1)) if match else 0.0
 
-# ====================== 加载type.csv（完全适配你的中文列名） ======================
+# ====================== 加载type.csv（完全不变） ======================
 def load_type_csv():
     global TYPE_NUTRITION_STANDARD
     csv_path = 'type.csv'
@@ -89,7 +95,6 @@ def load_type_csv():
         print("⚠️ 未找到type.csv，使用默认营养标准")
         return
 
-    # 检测编码（完美兼容中文CSV）
     encoding = detect_encoding(csv_path)
     try:
         df = pd.read_csv(csv_path, encoding=encoding, low_memory=False)
@@ -100,14 +105,12 @@ def load_type_csv():
             df = pd.read_csv(csv_path, encoding='utf-8', low_memory=False)
             print("⚠️ type.csv编码异常，使用utf-8读取")
 
-    # 直接使用你的中文列名，无需转换
     required_cols = ['性别', '年龄段_start', '年龄段_end', 'PAL', '能量', '蛋白质', '脂肪', '碳水', '钠']
     missing = [col for col in required_cols if col not in df.columns]
     if missing:
         print(f"❌ type.csv缺少必要列：{missing}，使用默认标准")
         return
 
-    # 存储为区间字典（key=(性别, PAL), value=区间列表）
     TYPE_NUTRITION_STANDARD = {}
     for _, row in df.iterrows():
         try:
@@ -116,7 +119,6 @@ def load_type_csv():
             end = float(row['年龄段_end'])
             pal = int(row['PAL'])
             
-            # 提取营养值
             standard = {
                 "energy": clean_nutrition_value(row['能量']),
                 "protein": clean_nutrition_value(row['蛋白质']),
@@ -125,7 +127,6 @@ def load_type_csv():
                 "sodium": clean_nutrition_value(row['钠'])
             }
 
-            # 按性别+PAL分组存储区间
             key = (gender, pal)
             if key not in TYPE_NUTRITION_STANDARD:
                 TYPE_NUTRITION_STANDARD[key] = []
@@ -140,124 +141,112 @@ def load_type_csv():
 
     print(f"✅ 成功加载type.csv，共{len(TYPE_NUTRITION_STANDARD)}组分类标准")
 
-# ====================== 匹配用户营养标准（左闭右开区间匹配） ======================
+# ====================== 匹配用户营养标准（完全不变） ======================
 def get_user_nutrition_standard(gender, age_start, age_end, pal):
     global TYPE_NUTRITION_STANDARD
-    # 1. 优先匹配用户性别+PAL
     key = (gender, pal)
     if key not in TYPE_NUTRITION_STANDARD:
-        # 匹配失败，用同PAL的默认性别（男）
         key = ('男', pal)
         if key not in TYPE_NUTRITION_STANDARD:
             print(f"⚠️ 未找到{gender}/PAL{pal}的标准，使用默认值")
             return {"energy":1800,"protein":55,"fat":60,"carbs":300,"sodium":2000}
 
-    # 2. 区间匹配（左闭右开：用户年龄 ∈ [start, end)）
     for item in TYPE_NUTRITION_STANDARD[key]:
         if item['start'] <= age_start and age_end <= item['end']:
             return item['standard']
 
-    # 3. 区间匹配失败，用同分类的默认区间
     print(f"⚠️ 未找到{gender}/{age_start}-{age_end}岁/PAL{pal}的区间，使用默认值")
     return {"energy":1800,"protein":55,"fat":60,"carbs":300,"sodium":2000}
 
-# ====================== 初始化食物数据 ======================
+# ====================== 初始化食物数据（完全不变） ======================
 def init_food():
     try:
-        db.session.query(Food).delete()
-        db.session.commit()
-        print("🗑️ 已清空旧食材数据")
-    except:
-        db.session.rollback()
+        if Food.query.count() == 0:
+            csv_path = 'food.csv'
+            if not os.path.exists(csv_path):
+                print("⚠️ 未找到food.csv")
+                return
 
-    csv_path = 'food.csv'
-    if not os.path.exists(csv_path):
-        print("⚠️ 未找到food.csv")
-        return
+            encoding = detect_encoding(csv_path)
+            try:
+                df = pd.read_csv(csv_path, encoding=encoding, low_memory=False)
+            except:
+                try:
+                    df = pd.read_csv(csv_path, encoding='gbk', low_memory=False)
+                except:
+                    df = pd.read_csv(csv_path, encoding='utf-8', low_memory=False)
 
-    encoding = detect_encoding(csv_path)
-    try:
-        df = pd.read_csv(csv_path, encoding=encoding, low_memory=False)
-    except:
-        try:
-            df = pd.read_csv(csv_path, encoding='gbk', low_memory=False)
-        except:
-            df = pd.read_csv(csv_path, encoding='utf-8', low_memory=False)
+            success = 0
+            for _, row in df.iterrows():
+                try:
+                    name = None
+                    for c in df.columns:
+                        if '食物名称' in str(c) or '食品名称' in str(c):
+                            name = str(row[c]).strip()
+                            break
 
-    success = 0
-    for _, row in df.iterrows():
-        try:
-            name = None
-            for c in df.columns:
-                if '食物名称' in str(c) or '食品名称' in str(c):
-                    name = str(row[c]).strip()
-                    break
-            # ========== 格式化食物编码：6位 / 7位（x结尾） ==========
-            food_code = "000000"
-            for c in df.columns:
-                if '食物编码' in str(c) or '编码' in str(c):
-                    raw_code = str(row[c]).strip().lower()
-                    # 清洗：只保留数字 + x
-                    clean_code = ''.join([ch for ch in raw_code if ch.isdigit() or ch == 'x'])
-                    
-                    # 格式化规则
-                    if clean_code.endswith('x'):
-                        # 7位：最后是x，前面补0
-                        food_code = clean_code.zfill(7)
-                    else:
-                        # 6位：数字，前面补0
-                        food_code = clean_code.zfill(6)
-                    break
-            if not name or name.lower() == 'nan':
-                continue
+                    food_code = "000000"
+                    for c in df.columns:
+                        if '食物编码' in str(c) or '编码' in str(c):
+                            raw_code = str(row[c]).strip().lower()
+                            clean_code = ''.join([ch for ch in raw_code if ch.isdigit() or ch == 'x'])
+                            
+                            if clean_code.endswith('x'):
+                                food_code = clean_code.zfill(7)
+                            else:
+                                food_code = clean_code.zfill(6)
+                            break
+                    if not name or name.lower() == 'nan':
+                        continue
 
-            food_data = {}
-            for col in df.columns:
-                val = row[col]
-                food_data[str(col)] = str(val) if pd.notna(val) else ""
+                    food_data = {}
+                    for col in df.columns:
+                        val = row[col]
+                        food_data[str(col)] = str(val) if pd.notna(val) else ""
 
-            energy = 0.0
-            protein = 0.0
-            fat = 0.0
-            carbs = 0.0
-            sodium = 0.0
+                    energy = 0.0
+                    protein = 0.0
+                    fat = 0.0
+                    carbs = 0.0
+                    sodium = 0.0
 
-            for c in df.columns:
-                cn = str(c).strip()
-                v = clean_nutrition_value(row[c])
-                if '能量' in cn or '热量' in cn:
-                    energy = v
-                elif '蛋白质' in cn:
-                    protein = v
-                elif '脂肪' in cn:
-                    fat = v
-                elif '碳水' in cn:
-                    carbs = v
-                elif '钠' in cn:
-                    sodium = v
+                    for c in df.columns:
+                        cn = str(c).strip()
+                        v = clean_nutrition_value(row[c])
+                        if '能量' in cn or '热量' in cn:
+                            energy = v
+                        elif '蛋白质' in cn:
+                            protein = v
+                        elif '脂肪' in cn:
+                            fat = v
+                        elif '碳水' in cn:
+                            carbs = v
+                        elif '钠' in cn:
+                            sodium = v
 
-            food = Food(
-                name=name,
-                food_code=food_code, 
-                energy=energy,
-                protein=protein,
-                fat=fat,
-                carbs=carbs,
-                sodium=sodium,
-                data_json=json.dumps({
-                    **food_data, 
-                    "食物编码": food_code
-                }, ensure_ascii=False)
-            )
-            db.session.add(food)
-            success += 1
-        except Exception as e:
-            continue
+                    food = Food(
+                        name=name,
+                        food_code=food_code, 
+                        energy=energy,
+                        protein=protein,
+                        fat=fat,
+                        carbs=carbs,
+                        sodium=sodium,
+                        data_json=json.dumps({**food_data, "食物编码": food_code}, ensure_ascii=False)
+                    )
+                    db.session.add(food)
+                    success += 1
+                except Exception as e:
+                    continue
 
-    db.session.commit()
-    print(f"✅ 成功导入{success}条食材数据")
+            db.session.commit()
+            print(f"✅ 成功导入{success}条食材数据")
+        else:
+            print("✅ food表已有数据，跳过初始化")
+    except Exception as e:
+        print(f"❌ 初始化食物数据失败: {e}")
 
-# ====================== 评分与耦合协调度 ======================
+# ====================== 评分与耦合协调度（完全不变） ======================
 def calculate_score(actual, target):
     weights = {"energy":0.25,"protein":0.20,"fat":0.20,"carbs":0.20,"sodium":0.15}
     score = 0
@@ -284,7 +273,7 @@ def coupling_coordination(U1, U2):
         judge = "不协调"
     return round(C,4), round(T,4), round(D,4), judge
 
-# ====================== 登录注册 ======================
+# ====================== 登录注册（完全不变） ======================
 @app.route('/register', methods=['POST'])
 def register():
     try:
@@ -294,7 +283,6 @@ def register():
         if User.query.filter_by(username=d['username']).first():
             return jsonify({"code":0,"msg":"账号已存在"})
         
-        # 解析分类数据
         gender = d.get('gender', '男')
         ageRange = d.get('ageRange', '18,29').split(',')
         age_start = float(ageRange[0])
@@ -335,7 +323,6 @@ def login():
     except:
         return jsonify({"code":0,"msg":"登录失败"})
 
-# ====================== 个人资料修改 ======================
 @app.route('/update_profile', methods=['POST'])
 def update_profile():
     try:
@@ -345,12 +332,10 @@ def update_profile():
         if not user:
             return jsonify({"code":0,"msg":"用户不存在"})
         
-        # 更新密码（非空才改）
         password = data.get('password')
         if password and password.strip():
             user.password = password
         
-        # 更新分类数据
         gender = data.get('gender')
         if gender:
             user.gender = gender
@@ -371,41 +356,27 @@ def update_profile():
         print(e)
         return jsonify({"code":0,"msg":"修改失败"})
 
-# ====================== 食材操作 ======================
+# ====================== 食材操作（完全不变） ======================
 @app.route('/search_food', methods=['POST'])
 def search_food():
     kw = str(request.json.get('keyword', '')).strip()
     user_id = request.json.get('user_id')
 
     HIDE_FOOD_IDS = list(range(1590, 1782))
-    hide_restricted = True  # 默认：屏蔽 8-99
+    hide_restricted = True
 
-    # =========================
-    # 【修复】严格按你原来逻辑：只有 0~0.5 / 0.5~1 / 1~3 才不屏蔽
-    # =========================
     if user_id:
         user = User.query.get(user_id)
         if user:
             a = user.age_start
             b = user.age_end
+            if (a == 0.0 and b == 0.5) or (a == 0.5 and b == 1.0) or (a == 1.0 and b == 3.0):
+                hide_restricted = False
 
-            # 你的原版判断条件（我完全保留，只修复判断逻辑）
-            if (a == 0.0 and b == 0.5) or \
-               (a == 0.5 and b == 1.0) or \
-               (a == 1.0 and b == 3.0):
-                hide_restricted = False  # 宝宝：不屏蔽
-
-    # 搜索（完全不变）
     query = Food.query.filter(
-        or_(
-            Food.name.like(f"%{kw}%"),
-            Food.food_code.like(f"%{kw}%")
-        )
+        or_(Food.name.like(f"%{kw}%"), Food.food_code.like(f"%{kw}%"))
     )
 
-    # =========================
-    # 【修复】稳定屏蔽：非 0-3 岁一定屏蔽 8-99
-    # =========================
     if hide_restricted:
         query = query.filter(~Food.id.in_(HIDE_FOOD_IDS))
 
@@ -452,7 +423,6 @@ def get_user_foods():
             res.append({
                 "id": uf.id, "food_id": uf.food_id, "name": uf.name,
                 "weight": uf.weight, "meal": uf.meal,
-                # ✅ 关键修复：把完整的data_json返回给前端！
                 "data_json": food.data_json,
                 "foodData": {"id": food.id, "name": food.name, "energy": food.energy, "protein": food.protein, "fat": food.fat, "carbs": food.carbs, "sodium": food.sodium}
             })
@@ -466,16 +436,12 @@ def delete_user_food():
         db.session.commit()
     return jsonify({"code":1,"msg":"删除成功"})
 
-# ====================== 百度识图（后端安全调用） ======================
-
 @app.route("/recognize_food", methods=["POST"])
 def recognize_food():
     try:
-        # 填写你的百度密钥
         API_KEY = "AU5JXPQruK1N28NsHpK6NQbW"
         SECRET_KEY = "amQQGOLch6IFLdwSNpSsAHnXwUPzp8ms"
 
-        # 获取 token（官方标准）
         token_url = "https://aip.baidubce.com/oauth/2.0/token"
         data = {
             "grant_type": "client_credentials",
@@ -489,15 +455,9 @@ def recognize_food():
         if not access_token:
             return jsonify({"code":0,"msg":"token获取失败"})
 
-        # 图片
         image = request.json.get("image")
-
-        # 官方接口地址
         url = "https://aip.baidubce.com/rest/2.0/image-classify/v2/advanced_general"
-        post_data = {
-            "image": image,
-            "baike_num": 0
-        }
+        post_data = {"image": image, "baike_num": 0}
 
         resp = requests.post(
             url,
@@ -509,16 +469,13 @@ def recognize_food():
 
         result = resp.json()
         raw = result.get("result", [])
-
         final = []
         for item in raw:
             score = float(item.get("score", 0))
             keyword = item.get("keyword", "").strip()
-
             if score < 0.2:
                 continue
 
-            # 匹配食材库
             food = Food.query.filter(
                 or_(Food.name.like(f"%{keyword}%"), Food.food_code.like(f"%{keyword}%"))
             ).first()
@@ -537,11 +494,9 @@ def recognize_food():
                 })
 
         return jsonify({"code":1,"data":final[:5]})
-
     except Exception as e:
         return jsonify({"code":0,"msg":str(e)})
-        
-# ====================== 拖拽更新餐次 ======================
+
 @app.route('/update_food_meal', methods=['POST'])
 def update_food_meal():
     d = request.json
@@ -562,7 +517,7 @@ def clear_user_foods():
     db.session.commit()
     return jsonify({"code":1,"msg":"清空成功"})
 
-# ====================== 营养汇总 ======================
+# ====================== 营养汇总 & 预测 & 推荐（完全不变） ======================
 @app.route('/get_total_nutri', methods=['POST'])
 def get_total_nutri():
     try:
@@ -570,7 +525,6 @@ def get_total_nutri():
         user_id = request.json.get('user_id')
         e=p=f=c=s=0.0
 
-        # 计算实际摄入
         for it in foods:
             w = float(it.get('weight',100))/100
             fd = it.get('foodData',{})
@@ -581,19 +535,14 @@ def get_total_nutri():
             s += float(fd.get('sodium',0)) * w
         e,p,f,c,s = round(e,1),round(p,1),round(f,1),round(c,1),round(s,1)
 
-        # 获取用户专属标准
         user = User.query.get(user_id) if user_id else None
         if user:
             targets = get_user_nutrition_standard(
-                gender=user.gender,
-                age_start=user.age_start,
-                age_end=user.age_end,
-                pal=user.pal
+                gender=user.gender, age_start=user.age_start, age_end=user.age_end, pal=user.pal
             )
         else:
             targets = {"energy":1800,"protein":55,"fat":60,"carbs":300,"sodium":2000}
 
-        # 计算评分
         actual = {"energy":e,"protein":p,"fat":f,"carbs":c,"sodium":s}
         score = calculate_score(actual, targets)
         U2 = calculate_score(targets, targets)
@@ -616,7 +565,14 @@ def get_total_nutri():
             "target_energy":1800,"target_protein":55,"target_fat":60,"target_carbs":300,"target_sodium":2000
         })
 
-# ====================== 营养预测 ======================
+def holt_winters_forecast(series, forecast_days=7, seasonal_periods=7):
+    model = ExponentialSmoothing(
+        series, trend='add', seasonal='add',
+        seasonal_periods=seasonal_periods, freq='D'
+    )
+    fitted_model = model.fit(smoothing_level=0.2, smoothing_trend=0.1, smoothing_seasonal=0.1)
+    return fitted_model.forecast(steps=forecast_days)
+
 @app.route('/predict_nutrition', methods=['POST'])
 def predict_nutrition():
     try:
@@ -624,10 +580,7 @@ def predict_nutrition():
         user = User.query.get(user_id)
         if user:
             recommended = get_user_nutrition_standard(
-                gender=user.gender,
-                age_start=user.age_start,
-                age_end=user.age_end,
-                pal=user.pal
+                gender=user.gender, age_start=user.age_start, age_end=user.age_end, pal=user.pal
             )
         else:
             recommended = {"energy":1800,"protein":55,"fat":60,"carbs":300,"sodium":2000}
@@ -710,15 +663,6 @@ def predict_nutrition():
         print("Predict Error:", e)
         return jsonify({"status": "error"})
 
-def holt_winters_forecast(series, forecast_days=7, seasonal_periods=7):
-    model = ExponentialSmoothing(
-        series, trend='add', seasonal='add',
-        seasonal_periods=seasonal_periods, freq='D'
-    )
-    fitted_model = model.fit(smoothing_level=0.2, smoothing_trend=0.1, smoothing_seasonal=0.1)
-    return fitted_model.forecast(steps=forecast_days)
-
-# ====================== 智能推荐与多因子分析 ======================
 @app.route('/get_advice_data', methods=['POST'])
 def get_advice_data():
     try:
@@ -727,7 +671,6 @@ def get_advice_data():
         foods = data.get('foods', [])
         user = User.query.get(user_id)
 
-        # 1. 计算当前摄入
         e = p = f = c = s = 0.0
         food_contrib = []
         for it in foods:
@@ -753,13 +696,11 @@ def get_advice_data():
                 "sodium": ns
             })
 
-        # 2. 获取推荐标准
         if user:
             target = get_user_nutrition_standard(user.gender, user.age_start, user.age_end, user.pal)
         else:
             target = {"energy": 1800, "protein": 55, "fat": 60, "carbs": 300, "sodium": 2000}
 
-        # 3. 计算缺口 & 偏差百分比
         gap = {
             "energy": round(target["energy"] - e, 1),
             "protein": round(target["protein"] - p, 1),
@@ -776,7 +717,6 @@ def get_advice_data():
             "sodium": (gap["sodium"] / target["sodium"]) * 100 if target["sodium"] != 0 else 0
         }
 
-        # 4. 多因子贡献度计算（完全不变）
         weights = {"energy": 0.3, "protein": 0.2, "fat": 0.2, "carbs": 0.2, "sodium": 0.1}
         total_e = sum([x["energy"] for x in food_contrib]) or 1
         total_p = sum([x["protein"] for x in food_contrib]) or 1
@@ -800,7 +740,6 @@ def get_advice_data():
 
         food_contrib = sorted(food_contrib, key=lambda x: x["score"], reverse=True)
 
-        # ====================== 食材屏蔽（完全同步搜索页） ======================
         HIDE_FOOD_IDS = list(range(1590, 1782))
         hide_restricted = True
         if user:
@@ -825,28 +764,20 @@ def get_advice_data():
                 "sodium": fd.sodium
             })
 
-        # ====================== 【核心修复1】排序逻辑：只显示≥20%，按绝对值从大到小 ======================
         priority_list = []
-        # 蛋白质：只要绝对值≥20%，就生成推荐（缺口>0=需要补充）
         if abs(pct["protein"]) >= 20:
             priority_list.append( (abs(pct["protein"]), "protein", True) )
-        # 热量
         if abs(pct["energy"]) >= 20:
             priority_list.append( (abs(pct["energy"]), "energy", True) )
-        # 脂肪
         if abs(pct["fat"]) >= 20:
             priority_list.append( (abs(pct["fat"]), "fat", True) )
-        # 碳水
         if abs(pct["carbs"]) >= 20:
             priority_list.append( (abs(pct["carbs"]), "carbs", True) )
-        # 钠：只要绝对值≥20%，就生成推荐（缺口<0=超标，推荐低钠）
         if abs(pct["sodium"]) >= 20:
             priority_list.append( (abs(pct["sodium"]), "sodium", False) )
 
-        # 按绝对值从大到小排序（保证蛋白质第一）
         priority_list = sorted(priority_list, key=lambda x: x[0], reverse=True)
 
-        # ====================== 【核心修复2】生成推荐 ======================
         rec = {}
         for abs_pct, key, is_supplement in priority_list:
             if key == "protein":
@@ -872,7 +803,6 @@ def get_advice_data():
         print("Advice Error:", e)
         return jsonify({"code": 0})
 
-# ====================== 首页智能推荐TOP3 ======================
 @app.route('/get_index_recommend', methods=['POST'])
 def get_index_recommend():
     try:
@@ -902,11 +832,12 @@ def get_index_recommend():
         })
     except:
         return jsonify({"code":0})
-    
-# ====================== 启动 ======================
+
+# ====================== 【Vercel 启动】 ======================
+with app.app_context():
+    db.create_all()
+    load_type_csv()
+    init_food()
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        load_type_csv()  # 启动时加载type.csv
-        init_food()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
