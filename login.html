@@ -320,7 +320,7 @@ async function doLogin(){
     if(!password){ alert('请输入密码！'); return; }
 
     try {
-        let res = await fetch('http://127.0.0.1:5000/login', {
+        let res = await fetch('/login', {
             method:'POST', 
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({ username, password })
@@ -360,7 +360,7 @@ async function doReg(){
     if(password !== pwd2){ alert('两次密码不一致！'); return; }
 
     try {
-        let res = await fetch('http://127.0.0.1:5000/register', {
+        let res = await fetch('/register', {
             method:'POST', 
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
