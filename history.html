@@ -208,7 +208,7 @@ async function loadWeeklyTrend() {
 // ==============================
 async function loadDailyScore(userId, date) {
     try {
-        const foodsResponse = await fetch('http://127.0.0.1:5000/get_user_foods', {
+        const foodsResponse = await fetch('/get_user_foods', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, date: date })
@@ -218,7 +218,7 @@ async function loadDailyScore(userId, date) {
         const foods = foodsResult.data || [];
         if(foods.length === 0) return 0;
         
-        const nutritionResponse = await fetch('http://127.0.0.1:5000/get_total_nutri', {
+        const nutritionResponse = await fetch('/get_total_nutri', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ foods: foods, user_id: userId })
@@ -248,7 +248,7 @@ async function loadDateData() {
     document.getElementById('currentDateDisplay').innerText = `当前查看：${formatDate(formattedDate)}`;
     
     try {
-        const foodsResponse = await fetch('http://127.0.0.1:5000/get_user_foods', {
+        const foodsResponse = await fetch('/get_user_foods', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: u.userId, date: formattedDate })
@@ -257,7 +257,7 @@ async function loadDateData() {
         const foodsResult = await foodsResponse.json();
         const foods = foodsResult.data || [];
         
-        const nutritionResponse = await fetch('http://127.0.0.1:5000/get_total_nutri', {
+        const nutritionResponse = await fetch('/get_total_nutri', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ foods: foods, user_id: u.userId })
