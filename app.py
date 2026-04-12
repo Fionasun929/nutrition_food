@@ -12,14 +12,23 @@ import chardet
 import requests
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='.', static_url_path='')  # 修复静态资源路径
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+
+# 修复 Supabase 连接串（必须加 pgbouncer=true，Vercel 专用）
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+if DATABASE_URL and "?pgbouncer=true" not in DATABASE_URL:
+    DATABASE_URL += "?pgbouncer=true"
+
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # 全局存储type.csv营养标准（完全适配你的中文列名）
 TYPE_NUTRITION_STANDARD = {}
+food_initialized = False
 
 # ====================== 模型定义 ======================
 class Food(db.Model):
