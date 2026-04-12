@@ -175,7 +175,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 async function loadUserNutritionStandard() {
     try {
-        const res = await fetch('http://127.0.0.1:5000/get_total_nutri', {
+        const res = await fetch('/get_total_nutri', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: u.userId, foods: [] })
@@ -199,7 +199,7 @@ async function saveProfile() {
     const password = document.getElementById('password').value.trim();
 
     try {
-        const res = await fetch('http://127.0.0.1:5000/update_profile', {
+        const res = await fetch('/update_profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
