@@ -121,7 +121,7 @@ async function searchFood() {
         selectedFood = null; disableAddBtn(); clearNutriPreview(); return;
     }
     try {
-        const res = await fetch('http://127.0.0.1:5000/search_food', {
+        const res = await fetch('/search_food', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ keyword, user_id: currentUser.userId })
@@ -176,7 +176,7 @@ async function add() {
     if(!selectedFood) { alert('请选择食材'); return; }
     const weight = document.getElementById('w').value;
     if(weight<1) { alert('重量≥1g'); return; }
-    await fetch('http://127.0.0.1:5000/save_user_food', {
+    await fetch('/save_user_food', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -199,7 +199,7 @@ async function add() {
 
 // 加载 + 渲染
 async function loadUserFoods() {
-    const res = await fetch('http://127.0.0.1:5000/get_user_foods', {
+    const res = await fetch('/get_user_foods', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({user_id:currentUser.userId, date:today})
     });
@@ -272,7 +272,7 @@ function initDrag() {
             const foodId = e.dataTransfer.getData('id');
             const targetMeal = el.dataset.meal;
 
-            await fetch('http://127.0.0.1:5000/update_food_meal', {
+            await fetch('/update_food_meal', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: foodId, meal: targetMeal })
@@ -286,14 +286,14 @@ function initDrag() {
 // 删除 / 清空（完全不变）
 async function del(id) {
     if(!confirm('确定删除？')) return;
-    await fetch('http://127.0.0.1:5000/delete_user_food', {
+    await fetch('/delete_user_food', {
         method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})
     });
     loadUserFoods();
 }
 async function clearAll() {
     if(!confirm('确定清空今日所有？')) return;
-    await fetch('http://127.0.0.1:5000/clear_user_foods', {
+    await fetch('/clear_user_foods', {
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({user_id:currentUser.userId, date:today})
     });
@@ -325,7 +325,7 @@ async function doRecognize(e) {
         alert("正在识别图片...");
         const base64 = await fileToBase64(file);
         
-        const res = await fetch('http://127.0.0.1:5000/recognize_food', {
+        const res = await fetch('/recognize_food', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image: base64 })
@@ -407,7 +407,7 @@ async function chooseYes() {
         weight = 100;
     }
 
-    await fetch('http://127.0.0.1:5000/save_user_food', {
+    await fetch('/save_user_food', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
