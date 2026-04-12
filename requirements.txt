@@ -1,0 +1,9 @@
+flask
+flask-sqlalchemy
+flask-cors
+pandas
+numpy
+chardet
+requests
+statsmodels
+psycopg2-binary

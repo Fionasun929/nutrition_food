@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 - 营养健康管理系统</title>
+<style>
+/* 登录/注册页面 专用美化样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+    --main-color: #667eea;
+    --main-color-dark: #5a67d8;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: url("bg.jpg") center center / cover fixed;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* 登录卡片：增加悬浮效果 + 更精致 */
+.login-container {
+  background: white;
+  border-radius: 24px;
+  padding: 44px 40px;
+  width: 90%;
+  max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+.login-container:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.3);
+}
+
+h2 {
+  text-align: center;
+  color: #222;
+  margin-bottom: 8px;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.subtitle {
+  text-align: center;
+  color: #666;
+  font-size: 15px;
+  margin-bottom: 36px;
+  line-height: 1.5;
+}
+
+/* 选项卡美化：更柔和更现代 */
+.tab {
+  display: flex;
+  margin-bottom: 32px;
+  background: #f7f8fc;
+  border-radius: 14px;
+  overflow: hidden;
+  padding: 4px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 10px;
+  transition: all 0.3s;
+}
+.tab-btn.active {
+  background: var(--main-color);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* 表单组间距更舒适 */
+.form-group {
+  margin-bottom: 24px;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 500;
+  color: #333;
+  font-size: 15px;
+}
+
+/* 输入框更精致 */
+.form-group input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 15px;
+  background: #fafbfc;
+  transition: 0.25s;
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--main-color);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+}
+
+/* 按钮更高级 */
+.btn {
+  width: 100%;
+  padding: 16px;
+  background: var(--main-color);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 10px;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+}
+.btn:hover {
+  background: var(--main-color-dark);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.45);
+}
+
+.demo-tip {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.5;
+}
+.demo-tip span {
+  color: var(--main-color);
+  font-weight: bold;
+}
+
+.age-select {
+  margin-top: 20px;
+  padding: 14px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+.age-select select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: white;
+  font-size: 15px;
+}
+</style>
+</head>
+<body>
+<div class="login-container">
+    <h2>🥗 营养健康管理系统</h2>
+    <div class="subtitle">科学饮食 · 健康生活</div>
+    <div class="tab">
+        <button class="tab-btn active" onclick="switchTab('login')">登录</button>
+        <button class="tab-btn" onclick="switchTab('reg')">注册</button>
+    </div>
+    <div id="loginPanel">
+        <div class="form-group"><label>账号</label><input id="loginUser" placeholder="请输入账号"></div>
+        <div class="form-group"><label>密码</label><input type="password" id="loginPwd" placeholder="请输入密码"></div>
+        <button class="btn" onclick="doLogin()">登 录</button>
+    </div>
+    <div id="regPanel" style="display:none">
+        <div class="form-group"><label>账号</label><input id="regUser" placeholder="设置账号"></div>
+        <div class="form-group"><label>密码</label><input type="password" id="regPwd" placeholder="设置密码"></div>
+        <div class="form-group"><label>确认密码</label><input type="password" id="regPwd2" placeholder="再次输入密码"></div>
+        
+        <div class="age-select">
+            <label>性别</label>
+            <select id="regGender">
+                <option value="男">男</option>
+                <option value="女">女</option>
+            </select>
+        </div>
+        
+        <div class="age-select">
+            <label>年龄段</label>
+            <select id="regAgeRange" onchange="updateRegPalOptions()">
+                <option value="0,0.5">0-6个月</option>
+                <option value="0.5,1">6-12个月</option>
+                <option value="1,2">1岁</option>
+                <option value="2,3">2岁</option>
+                <option value="3,4">3岁</option>
+                <option value="4,5">4岁</option>
+                <option value="5,6">5岁</option>
+                <option value="6,7">6岁</option>
+                <option value="7,8">7岁</option>
+                <option value="8,9">8岁</option>
+                <option value="9,10">9岁</option>
+                <option value="10,11">10岁</option>
+                <option value="11,12">11岁</option>
+                <option value="12,14">12-14岁</option>
+                <option value="15,17">15-17岁</option>
+                <option value="18,29">18-29岁</option>
+                <option value="30,49">30-49岁</option>
+                <option value="50,64">50-64岁</option>
+                <option value="65,74">65-74岁</option>
+                <option value="75,120">75岁以上</option>
+            </select>
+        </div>
+        
+        <div class="age-select">
+            <label>活动水平</label>
+            <select id="regPal"></select>
+        </div>
+        
+        <button class="btn" onclick="doReg()">注 册</button>
+    </div>
+</div>
+
+<script>
+function switchTab(tab){
+    document.getElementById('loginPanel').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('regPanel').style.display = tab === 'reg' ? 'block' : 'none';
+    let btns = document.querySelectorAll('.tab-btn');
+    btns[0].classList.toggle('active', tab==='login');
+    btns[1].classList.toggle('active', tab==='reg');
+}
+
+// ✅ 0-11岁 统一逻辑：不可选，PAL按规则映射
+function updateRegPalOptions() {
+    const ageSel = document.getElementById('regAgeRange');
+    const palSel = document.getElementById('regPal');
+    const val = ageSel.value;
+    const [start, end] = val.split(',').map(Number);
+
+    palSel.innerHTML = '';
+
+    if (start < 12) {
+        let opt = document.createElement('option');
+        
+        if (end <= 1) {
+            opt.value = "1";
+            opt.textContent = "婴儿期（0-1岁）";
+        } else if (start == 1) {
+            opt.value = "1";
+            opt.textContent = "儿童（1-3岁）";
+        } else if (start == 2) {
+            opt.value = "2";
+            opt.textContent = "儿童（1-3岁）";
+        } else if (start == 3) {
+            opt.value = "3";
+            opt.textContent = "儿童（1-3岁）";
+        } else if (start == 4) {
+            opt.value = "1";
+            opt.textContent = "儿童（4-6岁）";
+        } else if (start == 5) {
+            opt.value = "2";
+            opt.textContent = "儿童（4-6岁）";
+        } else if (start == 6) {
+            opt.value = "3";
+            opt.textContent = "儿童（4-6岁）";
+        } else if (start == 7) {
+            opt.value = "1";
+            opt.textContent = "儿童（7-8岁）";
+        } else if (start <= 8) {
+            opt.value = "2";
+            opt.textContent = "儿童（7-8岁）";
+        } else if (start == 9) {
+            opt.value = "1";
+            opt.textContent = "儿童（9-11岁）";
+        } else if (start == 10) {
+            opt.value = "2";
+            opt.textContent = "儿童（9-11岁）";
+        } else if (start == 11) {
+            opt.value = "3";
+            opt.textContent = "儿童（9-11岁）";
+        }
+
+        palSel.appendChild(opt);
+        palSel.disabled = true;
+        palSel.style.backgroundColor = "#f8f9fa";
+    } else {
+        palSel.disabled = false;
+        palSel.style.backgroundColor = "#fff";
+        
+        const list = [
+            {value:"1", text:"低活动水平"},
+            {value:"2", text:"中活动水平"},
+            {value:"3", text:"高活动水平"}
+        ];
+        
+        list.forEach(item => {
+            const o = document.createElement('option');
+            o.value = item.value;
+            o.textContent = item.text;
+            palSel.appendChild(o);
+        });
+        
+        palSel.value = "1";
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    updateRegPalOptions();
+});
+
+async function doLogin(){
+    let username = document.getElementById('loginUser').value.trim();
+    let password = document.getElementById('loginPwd').value;
+    
+    if(!username){ alert('请输入账号！'); return; }
+    if(!password){ alert('请输入密码！'); return; }
+
+    try {
+        let res = await fetch('http://127.0.0.1:5000/login', {
+            method:'POST', 
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({ username, password })
+        });
+        let r = await res.json();
+        
+        if(r.code === 1){
+            localStorage.setItem('currentUser', JSON.stringify({
+                userId: r.user_id,
+                username: r.username,
+                gender: r.gender,
+                ageRange: r.ageRange,
+                pal: r.pal
+            }));
+            alert('登录成功');
+            location.href = 'index.html';
+        } else {
+            alert(r.msg || '登录失败');
+        }
+    } catch (e) {
+        alert('网络错误，请稍后重试');
+    }
+}
+
+async function doReg(){
+    let username = document.getElementById('regUser').value.trim();
+    let password = document.getElementById('regPwd').value;
+    let pwd2 = document.getElementById('regPwd2').value;
+    let gender = document.getElementById('regGender').value;
+    let ageRange = document.getElementById('regAgeRange').value;
+    let pal = document.getElementById('regPal').value;
+
+    if(!username){ alert('请设置账号！'); return; }
+    if(username.length < 2){ alert('账号长度不能少于2位！'); return; }
+    if(!password){ alert('请设置密码！'); return; }
+    if(password.length < 6){ alert('密码长度不能少于6位！'); return; }
+    if(password !== pwd2){ alert('两次密码不一致！'); return; }
+
+    try {
+        let res = await fetch('http://127.0.0.1:5000/register', {
+            method:'POST', 
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                username,
+                password,
+                gender,
+                ageRange,
+                pal
+            })
+        });
+        let r = await res.json();
+        
+        if(r.code === 1){
+            alert('注册成功！请登录');
+            switchTab('login');
+            document.getElementById('loginUser').value = username;
+        } else {
+            alert(r.msg || '注册失败');
+        }
+    } catch (e) {
+        alert('网络错误，请稍后重试');
+    }
+}
+</script>
+</body>
+</html>
