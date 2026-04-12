@@ -7,3 +7,4 @@ chardet
 requests
 statsmodels
 psycopg2-binary
+gunicorn
