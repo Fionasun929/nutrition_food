@@ -73,7 +73,7 @@
 </div>
 
 <div style="text-align:center;margin-top:20px">
-    <a href="index.html" class="btn">🏠 返回首页</a>
+    <a href="index" class="btn">🏠 返回首页</a>
 </div>
 
 <div class="footer">数据来源：《中国食物成分表》</div>
@@ -81,7 +81,7 @@
 
 <script>
 const u = JSON.parse(localStorage.getItem('currentUser'));
-if(!u)location.href='login.html';
+if(!u)location.href='login';
 
 const today = new Date().toLocaleDateString().replace(/\//g, '-');
 const todayFormatted = new Date().toISOString().split('T')[0];
@@ -96,7 +96,7 @@ document.getElementById('currentDateDisplay').innerText = `当前查看：${form
 function logout(){
     if(confirm('确认退出？')){
         localStorage.removeItem('currentUser');
-        location.href='login.html';
+        location.href='login';
     }
 }
 
