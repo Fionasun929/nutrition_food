@@ -4,12 +4,12 @@ from flask_cors import CORS
 from datetime import datetime, timedelta
 from sqlalchemy import Float, or_
 import pandas as pd
-import numpy as np
 import re
 import os
 import json
 import chardet
 import requests
+import math
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 app = Flask(__name__, static_folder='.', static_url_path='')
@@ -32,7 +32,7 @@ db = SQLAlchemy(app)
 # 全局存储type.csv营养标准
 TYPE_NUTRITION_STANDARD = {}
 
-# ====================== 模型定义（完全不变） ======================
+# ====================== 模型定义 ======================
 class Food(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), index=True)
@@ -72,7 +72,7 @@ def index():
         with open('index.html', 'r', encoding='utf-8') as f:
             return f.read()
 
-# ====================== 工具函数（完全不变） ======================
+# ====================== 工具函数 ======================
 def detect_encoding(file_path):
     with open(file_path, 'rb') as f:
         raw = f.read(10000)
@@ -87,7 +87,7 @@ def clean_nutrition_value(val):
     match = re.search(r'(\d+\.?\d*)', s)
     return float(match.group(1)) if match else 0.0
 
-# ====================== 加载type.csv（完全不变） ======================
+# ====================== 加载type.csv ======================
 def load_type_csv():
     global TYPE_NUTRITION_STANDARD
     csv_path = 'type.csv'
@@ -141,7 +141,7 @@ def load_type_csv():
 
     print(f"✅ 成功加载type.csv，共{len(TYPE_NUTRITION_STANDARD)}组分类标准")
 
-# ====================== 匹配用户营养标准（完全不变） ======================
+# ====================== 匹配用户营养标准 ======================
 def get_user_nutrition_standard(gender, age_start, age_end, pal):
     global TYPE_NUTRITION_STANDARD
     key = (gender, pal)
@@ -158,7 +158,7 @@ def get_user_nutrition_standard(gender, age_start, age_end, pal):
     print(f"⚠️ 未找到{gender}/{age_start}-{age_end}岁/PAL{pal}的区间，使用默认值")
     return {"energy":1800,"protein":55,"fat":60,"carbs":300,"sodium":2000}
 
-# ====================== 初始化食物数据（完全不变） ======================
+# ====================== 初始化食物数据 ======================
 def init_food():
     try:
         if Food.query.count() == 0:
@@ -246,7 +246,7 @@ def init_food():
     except Exception as e:
         print(f"❌ 初始化食物数据失败: {e}")
 
-# ====================== 评分与耦合协调度（完全不变） ======================
+# ====================== 评分与耦合协调度（替换np为math） ======================
 def calculate_score(actual, target):
     weights = {"energy":0.25,"protein":0.20,"fat":0.20,"carbs":0.20,"sodium":0.15}
     score = 0
@@ -260,9 +260,9 @@ def calculate_score(actual, target):
 def coupling_coordination(U1, U2):
     if (U1 + U2) == 0:
         return 0, 0, 0, "无数据"
-    C = 2 * np.sqrt(U1 * U2) / (U1 + U2)
+    C = 2 * math.sqrt(U1 * U2) / (U1 + U2)
     T = 0.5 * U1 + 0.5 * U2
-    D = np.sqrt(C * T)
+    D = math.sqrt(C * T)
     if D >= 8.0:
         judge = "优质协调"
     elif D >= 6.0:
@@ -273,7 +273,7 @@ def coupling_coordination(U1, U2):
         judge = "不协调"
     return round(C,4), round(T,4), round(D,4), judge
 
-# ====================== 登录注册（完全不变） ======================
+# ====================== 登录注册 ======================
 @app.route('/register', methods=['POST'])
 def register():
     try:
@@ -356,7 +356,7 @@ def update_profile():
         print(e)
         return jsonify({"code":0,"msg":"修改失败"})
 
-# ====================== 食材操作（完全不变） ======================
+# ====================== 食材操作 ======================
 @app.route('/search_food', methods=['POST'])
 def search_food():
     kw = str(request.json.get('keyword', '')).strip()
@@ -517,7 +517,7 @@ def clear_user_foods():
     db.session.commit()
     return jsonify({"code":1,"msg":"清空成功"})
 
-# ====================== 营养汇总 & 预测 & 推荐（完全不变） ======================
+# ====================== 营养汇总 ======================
 @app.route('/get_total_nutri', methods=['POST'])
 def get_total_nutri():
     try:
@@ -565,6 +565,7 @@ def get_total_nutri():
             "target_energy":1800,"target_protein":55,"target_fat":60,"target_carbs":300,"target_sodium":2000
         })
 
+# ====================== 预测（保留statsmodels，去掉np.mean） ======================
 def holt_winters_forecast(series, forecast_days=7, seasonal_periods=7):
     model = ExponentialSmoothing(
         series, trend='add', seasonal='add',
@@ -602,11 +603,14 @@ def predict_nutrition():
         dates = pd.date_range(end=end_dt, periods=60, freq='D')
         history = {k: [] for k in recommended}
 
+        # 原生替代 np.random
+        import random
+        random.seed(0)
         for k, base in recommended.items():
             for i in range(60):
                 wd = i % 7
                 seasonal = 1.05 if wd >= 5 else 0.98
-                noise = np.random.normal(1, 0.02)
+                noise = random.gauss(1, 0.02)
                 history[k].append(base * seasonal * noise)
 
         for d_str in real_days:
@@ -636,11 +640,15 @@ def predict_nutrition():
         for nutri in recommended:
             pred[nutri] = holt_winters_forecast(df[nutri]).tolist()
 
-        gap_energy  = round(recommended["energy"]  - np.mean(pred["energy"]),  1)
-        gap_protein = round(recommended["protein"] - np.mean(pred["protein"]), 1)
-        gap_fat     = round(recommended["fat"]     - np.mean(pred["fat"]),    1)
-        gap_carbs   = round(recommended["carbs"]   - np.mean(pred["carbs"]),  1)
-        gap_sodium  = round(recommended["sodium"]  - np.mean(pred["sodium"]), 1)
+        # 原生实现 mean
+        def mean(lst):
+            return sum(lst)/len(lst) if lst else 0
+
+        gap_energy  = round(recommended["energy"]  - mean(pred["energy"]),  1)
+        gap_protein = round(recommended["protein"] - mean(pred["protein"]), 1)
+        gap_fat     = round(recommended["fat"]     - mean(pred["fat"]),    1)
+        gap_carbs   = round(recommended["carbs"]   - mean(pred["carbs"]),  1)
+        gap_sodium  = round(recommended["sodium"]  - mean(pred["sodium"]), 1)
 
         status = "partial" if real_count < 7 else "full"
 
@@ -663,6 +671,7 @@ def predict_nutrition():
         print("Predict Error:", e)
         return jsonify({"status": "error"})
 
+# ====================== 推荐 ======================
 @app.route('/get_advice_data', methods=['POST'])
 def get_advice_data():
     try:
@@ -833,7 +842,7 @@ def get_index_recommend():
     except:
         return jsonify({"code":0})
 
-# ====================== 【Vercel 启动】 ======================
+# ====================== 启动 ======================
 with app.app_context():
     db.create_all()
     load_type_csv()
