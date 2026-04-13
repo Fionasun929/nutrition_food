@@ -25,15 +25,15 @@
 <div class="card">
     <h3>📊 今日营养速览</h3>
     <div>热量 <span id="kcal" class="stat">0</span> kcal</div>
-    <div class="progress"><div class="progress-bar" id="p_energy" style="background:#94a3b8"></div></div>
+    <div class="progress"><div class="progress-bar" id="p_energy"></div></div>
     <div>蛋白质 <span id="pro" class="stat">0g</span></div>
-    <div class="progress"><div class="progress-bar" id="p_pro" style="background:#94a3b8"></div></div>
+    <div class="progress"><div class="progress-bar" id="p_pro"></div></div>
     <div>脂肪 <span id="fat" class="stat">0g</span></div>
-    <div class="progress"><div class="progress-bar" id="p_fat" style="background:#94a3b8"></div></div>
+    <div class="progress"><div class="progress-bar" id="p_fat"></div></div>
     <div>碳水 <span id="car" class="stat">0g</span></div>
-    <div class="progress"><div class="progress-bar" id="p_car" style="background:#94a3b8"></div></div>
+    <div class="progress"><div class="progress-bar" id="p_car"></div></div>
     <div>钠 <span id="na" class="stat">0mg</span></div>
-    <div class="progress"><div class="progress-bar" id="p_na" style="background:#94a3b8"></div></div>
+    <div class="progress"><div class="progress-bar" id="p_na"></div></div>
     <div style="margin-top:20px;display:flex;gap:10px;justify-content:center">
         <a href="/input" class="btn">快速录入</a>
     </div>
@@ -172,7 +172,7 @@ function updateCharts(scoreValue, coordinationValue) {
         }],
         graphic: [
             { type: 'text', left: 'center', top: '42%', style: { text: scoreText, fontSize: centerFontSize, fontWeight: 'bold', fill: scoreColor } },
-            { type: 'text', left: 'center', top: '66%', style: { text: '评分', fontSize: 14, fill: '#94a3b8' } }
+            { type: 'text', left: 'center', top: '66%', style: { text: '评分', fontSize: 14, fill: '#D5DCD5' } }
         ]
     });
     
