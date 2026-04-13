@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>膳食营养健康可视化系统</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+<div class="container">
+<div class="header">
+    <div><h1>🥗 膳食营养健康可视化系统</h1></div>
+    <div class="user-info">
+        <div class="avatar" id="av">U</div>
+        <div>
+            <div class="user-name" id="uname"></div>
+            <div style="font-size:12px;opacity:0.8" id="age"></div>
+        </div>
+        <a href="own.html" class="btn-sm">个人中心</a>
+        <a href="javascript:logout()" class="btn-sm">退出登录</a>
+    </div>
+</div>
+
+<div class="grid-3">
+<div class="card">
+    <h3>📊 今日营养速览</h3>
+    <div>热量 <span id="kcal" class="stat">0</span> kcal</div>
+    <div class="progress"><div class="progress-bar" id="p_energy"></div></div>
+    <div>蛋白质 <span id="pro" class="stat">0g</span></div>
+    <div class="progress"><div class="progress-bar" id="p_pro"></div></div>
+    <div>脂肪 <span id="fat" class="stat">0g</span></div>
+    <div class="progress"><div class="progress-bar" id="p_fat"></div></div>
+    <div>碳水 <span id="car" class="stat">0g</span></div>
+    <div class="progress"><div class="progress-bar" id="p_car"></div></div>
+    <div>钠 <span id="na" class="stat">0mg</span></div>
+    <div class="progress"><div class="progress-bar" id="p_na"></div></div>
+    <div style="margin-top:20px;display:flex;gap:10px;justify-content:center">
+        <a href="input.html" class="btn">快速录入</a>
+    </div>
+</div>
+
+<div class="card" id="middleCard">
+    <div class="middle-card-content">
+        <div class="chart-card">
+            <div class="chart-wrapper">
+                <div id="scoreChart" class="chart-container"></div>
+            </div>
+            <div class="vertical-text left-text">
+                膳<br>食<br>健<br>康<br>评<br>分
+            </div>
+        </div>
+        <div class="divider-vertical"></div>
+        <div class="chart-card">
+            <div class="vertical-text right-text">
+                耦<br>合<br>协<br>调<br>度<br>D
+            </div>
+            <div class="chart-wrapper">
+                <div id="coordinationChart" class="chart-container"></div>
+            </div>
+        </div>
+    </div>
+    <div style="margin-top: 12px; text-align: center;">
+        <a href="result.html" class="btn">📋 今日报告详情</a>
+    </div>
+</div>
+
+<div class="card">
+    <h3>⚠️ 营养缺口分析</h3>
+    <div id="gap" class="gap-text"></div>
+    
+    <h3 style="margin-top:20px;margin-bottom:12px;border-left:4px solid #667eea;padding-left:12px">💡 智能推荐</h3>
+    <div id="rec" class="gap-text"></div>
+    
+    <div style="margin-top:20px;display:flex;justify-content:center">
+        <a href="advice.html" class="btn">查看详情</a>
+    </div>
+</div>
+</div>
+
+<div class="bottom-buttons">
+    <a href="history.html" class="btn btn-outline">📈 历史数据</a>
+    <button class="btn" onclick="showExportModal()">📤 导出报告</button>
+    <a href="predict.html" class="btn btn-outline">🔮 营养预测</a>
+</div>
+
+<div class="footer">数据来源：《中国食物成分表》</div>
+</div>
+
+<!-- 导出弹窗容器 -->
+<div id="exportModal" style="display:none"></div>
+
+<script>
+const u = JSON.parse(localStorage.getItem('currentUser'));
+if(!u) location.href='login.html';
+
+const today = new Date().toLocaleDateString().replace(/\//g, '-');
+document.getElementById('uname').innerText=u.username;
+document.getElementById('av').innerText=u.username.charAt(0).toUpperCase();
+
+// 营养字段（与result保持一致）
+const NUTRI_FIELDS = [
+    "水分","能量","蛋白质","脂肪","碳水化合物",
+    "不溶性膳食纤维","胆固醇","灰分","总维生素A","胡萝卜素",
+    "视黄醇","硫胺素","核黄素","烟酸","维生素C","维生素E",
+    "钙","磷","钾","钠","镁","铁","锌","硒","铜","锰"
+];
+const DEFAULT_EXPORT = ["能量","蛋白质","脂肪","碳水化合物","钠"];
+
+function logout(){
+    if(confirm('确认退出？')){
+        localStorage.removeItem('currentUser');
+        location.href='login.html';
+    }
+}
+
+let scoreChart = echarts.init(document.getElementById('scoreChart'));
+let coordinationChart = echarts.init(document.getElementById('coordinationChart'));
+
+// ====================== 修复：仪表盘配置（宽度25 + 自动渐变颜色） ======================
+const baseGaugeOption = (maxVal) => ({
+    series: [{
+        type: 'gauge',
+        startAngle: 90,
+        endAngle: -270,
+        radius: '100%',
+        center: ['50%','50%'],
+        pointer: { show: false },
+        progress: {
+            show: true,
+            overlap: false,
+            roundCap: true,
+            clip: false
+        },
+        axisLine: {
+            lineStyle: {
+                width: 25, // 圆环宽度固定 25
+                color: [[1, '#e9eef5']]
+            }
+        },
+        splitLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { show: false },
+        title: { show: false },
+        detail: { show: false },
+        max: maxVal,
+        data: [{ value: 0 }]
+    }]
+});
+
+scoreChart.setOption(baseGaugeOption(100));
+coordinationChart.setOption(baseGaugeOption(10));
+
+// ====================== 修复：更新图表（自动渐变：0 深红 → 最大值深绿） ======================
+function updateCharts(scoreValue, coordinationValue) {
+    // 核心：根据数值自动计算渐变色 0~max → 红→橙→绿
+    const getGradientColor = (value, max) => {
+        const ratio = value / max;
+        // 0 = 深红 (#b71c1c) → 1 = 深绿 (#1b5e20)
+        if (ratio >= 1) return '#1b5e20';
+        if (ratio >= 0.7) return '#38a169';
+        if (ratio >= 0.5) return '#f57c00';
+        if (ratio >= 0.3) return '#ff4d4f';
+        return '#b71c1c';
+    };
+
+    const scoreColor = getGradientColor(scoreValue, 100);
+    const coordColor = getGradientColor(coordinationValue, 10);
+    
+    let truncatedScore = Math.floor(scoreValue * 100) / 100;
+    let scoreText = truncatedScore.toFixed(2);
+    let coordRounded = coordinationValue.toFixed(2);
+    const centerFontSize = 28;
+    
+    // 评分仪表盘
+    scoreChart.setOption({
+        series: [{
+            progress: { itemStyle: { color: scoreColor } },
+            data: [{ value: scoreValue }]
+        }],
+        graphic: [
+            { type: 'text', left: 'center', top: '42%', style: { text: scoreText, fontSize: centerFontSize, fontWeight: 'bold', fill: scoreColor } },
+            { type: 'text', left: 'center', top: '66%', style: { text: '评分', fontSize: 14, fill: '#94a3b8' } }
+        ]
+    });
+    
+    // 协调度仪表盘
+    coordinationChart.setOption({
+        series: [{
+            progress: { itemStyle: { color: coordColor } },
+            data: [{ value: coordinationValue }]
+        }],
+        graphic: [
+            { type: 'text', left: 'center', top: '42%', style: { text: coordRounded, fontSize: centerFontSize, fontWeight: 'bold', fill: coordColor } },
+            { type: 'text', left: 'center', top: '66%', style: { text: '指数', fontSize: 14, fill: '#94a3b8' } }
+        ]
+    });
+}
+
+// 清洗营养数值
+function cleanNutriValue(val) {
+    if (val === null || val === undefined) return 0;
+    let s = String(val).trim();
+    const invalid = ["-", "", "NA", "无", "微量", "nan", "NaN", "—"];
+    if (invalid.includes(s)) return 0;
+    const m = s.match(/(\d+\.?\d*)/);
+    return m ? parseFloat(m[1]) : 0;
+}
+
+// 计算总营养
+function calculateTotalNutrition(foods) {
+    const total = {};
+    NUTRI_FIELDS.forEach(f => total[f] = 0);
+    foods.forEach(item => {
+        try {
+            const j = JSON.parse(item.data_json.trim().replace(/\n/g,""));
+            const r = cleanNutriValue(item.weight)/100;
+            NUTRI_FIELDS.forEach(f => total[f] += cleanNutriValue(j[f])*r);
+        } catch(e) {}
+    });
+    return total;
+}
+
+async function loadTotal(){
+    try {
+        const foodsResponse = await fetch('/get_user_foods', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: u.userId, date: today })
+        });
+        const foodsResult = await foodsResponse.json();
+        const foods = foodsResult.data || [];
+        
+        const res = await fetch('/get_total_nutri', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ foods: foods, user_id: u.userId })
+        });
+        let d = await res.json();
+        
+        document.getElementById('kcal').innerText = d.energy || 0;
+        document.getElementById('pro').innerText = (d.protein || 0) + 'g';
+        document.getElementById('fat').innerText = (d.fat || 0) + 'g';
+        document.getElementById('car').innerText = (d.carbs || 0) + 'g';
+        document.getElementById('na').innerText = (d.sodium || 0) + 'mg';
+        
+        const target = {
+            energy: d.target_energy, protein: d.target_protein,
+            fat: d.target_fat, carbs: d.target_carbs, sodium: d.target_sodium
+        };
+        
+        document.getElementById('p_energy').style.width = Math.min(100, (d.energy/target.energy)*100) + '%';
+        document.getElementById('p_pro').style.width = Math.min(100, (d.protein/target.protein)*100) + '%';
+        document.getElementById('p_fat').style.width = Math.min(100, (d.fat/target.fat)*100) + '%';
+        document.getElementById('p_car').style.width = Math.min(100, (d.carbs/target.carbs)*100) + '%';
+        document.getElementById('p_na').style.width = Math.min(100, (d.sodium/target.sodium)*100) + '%';
+        
+        let score = d.score || 0;
+        let coordination = (d.D !== undefined && d.D !== null) ? d.D : 0;
+        updateCharts(score, coordination);
+        
+        let gapHtml = '';
+        if(d.energy < target.energy * 0.8) gapHtml += '<div class="danger">⚠️ 热量摄入不足</div>';
+        if(d.protein < target.protein * 0.8) gapHtml += '<div class="danger">⚠️ 蛋白质摄入不足</div>';
+        if(d.fat < target.fat * 0.7) gapHtml += '<div class="danger">⚠️ 脂肪摄入不足</div>';
+        if(d.sodium > target.sodium * 1.1) gapHtml += '<div class="danger">⚠️ 钠摄入超标</div>';
+        if(gapHtml === '') gapHtml = '<div class="success">✅ 暂无明显营养缺口</div>';
+        document.getElementById('gap').innerHTML = gapHtml;
+        
+        let recHtml = '';
+        const gaps = [
+            { key: 'protein', name: '蛋白质', pct: Math.abs((target.protein - d.protein)/target.protein), unit: 'g' },
+            { key: 'energy', name: '热量', pct: Math.abs((target.energy - d.energy)/target.energy), unit: 'kcal' },
+            { key: 'fat', name: '脂肪', pct: Math.abs((target.fat - d.fat)/target.fat), unit: 'g' },
+            { key: 'carbs', name: '碳水', pct: Math.abs((target.carbs - d.carbs)/target.carbs), unit: 'g' },
+            { key: 'sodium', name: '钠', pct: Math.abs((target.sodium - d.sodium)/target.sodium), unit: 'mg', isLow: true }
+        ];
+        gaps.sort((a,b)=>b.pct-a.pct);
+        const topNeed = gaps[0];
+        
+        const resRec = await fetch('/get_index_recommend', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: u.userId })
+        });
+        const topData = await resRec.json();
+        const top3 = topData[topNeed.key]?.slice(0,3) || [];
+        
+        if (topNeed.key === 'sodium' && d.sodium > target.sodium*1.1) {
+            recHtml = `<div>⚠️ 钠摄入超标，推荐低钠食材：</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">${top3.map(i=>`<span style="padding:6px 12px;background:#f0f2ff;border-radius:8px;font-size:14px;">${i.name}</span>`).join('')}</div>`;
+        } else if (topNeed.pct>0.2) {
+            recHtml = `<div>🥩 推荐补充${topNeed.name}：</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">${top3.map(i=>`<span style="padding:6px 12px;background:#f0f2ff;border-radius:8px;font-size:14px;">${i.name} ${i[topNeed.key]}${topNeed.unit}</span>`).join('')}</div>`;
+        } else {
+            recHtml = '<div>👍 饮食均衡，无需特殊调整</div>';
+        }
+        document.getElementById('rec').innerHTML = recHtml;
+        
+        window.reportData = d;
+        window.foodList = foods;
+        window.totalNutriData = calculateTotalNutrition(foods);
+    } catch (e) {
+        console.error('加载数据失败：', e);
+        document.getElementById('gap').innerHTML = '<div class="danger">❌ 数据加载失败，请检查后端</div>';
+        updateCharts(0,0);
+    }
+}
+
+// ====================== 导出弹窗（与result完全一致） ======================
+function showExportModal() {
+    if(!window.reportData) { alert('暂无报告数据，请先录入食材！'); return; }
+    let opts = "";
+    NUTRI_FIELDS.forEach(f => {
+        const checked = DEFAULT_EXPORT.includes(f) ? "checked" : "";
+        opts += `<div class="option-item"><input type="checkbox" value="${f}" id="opt_${f}" ${checked}> <label for="opt_${f}">${f}</label></div>`;
+    });
+
+    document.getElementById("exportModal").innerHTML = `
+    <div class="modal">
+      <div class="modal-box">
+        <div class="modal-title">选择导出营养素</div>
+        <div class="btn-group">
+          <button class="select-all-btn" onclick="checkAll(true)">全选</button>
+          <button class="select-all-btn" onclick="checkAll(false)">取消全选</button>
+        </div>
+        <div class="option-grid">${opts}</div>
+        <div class="modal-buttons">
+          <button class="modal-btn btn-cancel" onclick="closeModal()">取消</button>
+          <button class="modal-btn btn-confirm" onclick="doExport()">确认导出</button>
+        </div>
+      </div>
+    </div>`;
+    document.getElementById("exportModal").style.display = "block";
+}
+
+function checkAll(flag) {
+    NUTRI_FIELDS.forEach(f => {
+        const el = document.getElementById(`opt_${f}`);
+        if(el) el.checked = flag;
+    });
+}
+
+function closeModal() {
+    document.getElementById("exportModal").style.display = "none";
+}
+
+function doExport() {
+    const checked = NUTRI_FIELDS.filter(f => document.getElementById(`opt_${f}`)?.checked);
+    closeModal();
+    const d = window.reportData;
+    const foods = window.foodList || [];
+    const total = window.totalNutriData || {};
+
+    let content = `# 营养分析报告
+用户：${u.username}
+时间：${new Date().toLocaleString()}
+
+【耦合评价】
+耦合度 C：${d.C || 0}
+综合指数 T：${d.T || 0}
+协调度 D：${d.D || 0}
+评价：${d.judge || "暂无"}
+
+【健康评分】${d.score || 0}分
+
+【导出营养素】
+`;
+    checked.forEach(f => content += `${f}：${(total[f]||0).toFixed(2)}\n`);
+    content += "\n【今日食材】\n";
+    foods.forEach((it,i) => content += `${i+1}、${it.name} ${it.weight}g  [${it.meal || ''}]\n`);
+
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `营养报告_${today}.txt`;
+    a.click();
+    alert("导出成功！");
+}
+
+window.addEventListener('resize', () => {
+    if(scoreChart) scoreChart.resize();
+    if(coordinationChart) coordinationChart.resize();
+});
+
+loadTotal();
+</script>
+</body>
+</html>
