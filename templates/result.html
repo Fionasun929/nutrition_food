@@ -45,9 +45,9 @@
 
     <div style="text-align:center">
         <button class="btn" onclick="showExportModal()">📤 导出报告</button>
-        <a href="index" class="btn btn-outline">返回首页</a>
-        <a href="history" class="btn btn-outline">历史数据</a>
-        <a href="input" class="btn btn-outline">继续录入</a>
+        <a href="/index" class="btn btn-outline">返回首页</a>
+        <a href="/history" class="btn btn-outline">历史数据</a>
+        <a href="/input" class="btn btn-outline">继续录入</a>
     </div>
 </div>
 
@@ -55,7 +55,7 @@
 
 <script>
 const u = JSON.parse(localStorage.getItem('currentUser'));
-if(!u)location.href='login';
+if(!u)location.href='/login';
 const today = new Date().toLocaleDateString().replace(/\//g, '-');
 
 const NUTRI_FIELDS = [
