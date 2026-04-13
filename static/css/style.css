@@ -13,8 +13,7 @@
 
 body {
   background: url("/static/images/bg.jpg");
-  /* ========== 背景自适应：铺满屏幕，不变形 ========== */
-  background-size: cover;
+  background-size: 100% auto;
   background-position: center top;
   background-repeat: repeat-y;
   background-attachment: scroll;
@@ -28,8 +27,6 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  /* ========== 容器自适应：小屏幕自动缩小 ========== */
-  width: 100%;
 }
 
 .header {
@@ -42,9 +39,6 @@ body {
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  /* ========== 头部自适应：小屏幕自动换行 ========== */
-  flex-wrap: wrap;
-  gap: 16px;
 }
 
 .header a {
@@ -89,15 +83,12 @@ body {
   font-size: 14px;
   transition: 0.3s;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  white-space: nowrap;
 }
 .btn-sm:hover {
   background: rgba(255,255,255,0.35);
   transform: translateY(-2px);
 }
 
-/* ==================== 【核心】卡片统一自适应大小 ==================== */
-/* 所有卡片统一尺寸规则，解决不同电脑大小不一问题 */
 .card {
   background: var(--card-bg);
   border-radius: 24px;
@@ -106,14 +97,6 @@ body {
   border: 1px solid rgba(255,255,255,0.6);
   box-shadow: 0 12px 32px rgba(102, 126, 234, 0.12), 0 2px 8px rgba(0,0,0,0.08);
   transition: all 0.35s ease;
-  
-  /* ========== 自适应核心代码 ========== */
-  width: 100%;             /* 宽度100%自适应父容器 */
-  min-height: 120px;       /* 统一最小高度，不会压扁 */
-  max-width: 100%;         /* 不会超出屏幕 */
-  height: 100%;            /* 网格布局下等高 */
-  display: flex;           /* 内部布局稳定 */
-  flex-direction: column;  /* 内容垂直排列 */
 }
 .card:hover {
   transform: translateY(-6px);
@@ -129,12 +112,10 @@ body {
   padding-left: 12px;
 }
 
-/* 3列网格自适应：小屏幕自动变2列、1列 */
 .grid-3 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
-  align-items: stretch; /* 让所有卡片高度统一 */
 }
 
 .btn {
@@ -216,7 +197,6 @@ body {
   gap: 16px;
   margin-bottom: 12px;
 }
-/* 图表卡片自适应 */
 .chart-card {
   flex: 1;
   min-width: 180px;
@@ -231,11 +211,6 @@ body {
   gap: 8px;
   box-shadow: none;
   transition: none;
-  
-  /* ========== 图表卡片自适应 ========== */
-  width: 100%;
-  max-width: 100%;
-  height: auto;
 }
 .chart-card:hover {
   transform: none;
@@ -266,18 +241,11 @@ body {
   background: linear-gradient(to bottom, #e2e8f0, #cbd5e1, #e2e8f0);
 }
 
-/* 小屏幕（手机）完整自适应 */
 @media (max-width: 700px) {
   .middle-card-content { flex-direction: column; }
   .divider-vertical { width: 80%; height: 1px; }
   .chart-card { width: 100%; }
   .vertical-text { flex-direction: row; }
-  
-  /* 移动端卡片内边距缩小，更美观 */
-  .card {
-    padding: 16px;
-    min-height: 100px;
-  }
 }
 
 .modal {
@@ -373,12 +341,12 @@ input:focus,select:focus {
 /* ==================== predict 独有 ==================== */
 .title { font-size:20px; font-weight:600; margin-bottom:16px; color:#333; }
 .grid {
-  display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-bottom:16px;
+  display:grid; grid-template-columns: repeat(3,1fr); gap:16px; margin-bottom:16px;
 }
 .chart-item h4 {
   font-size:14px; color:#333; margin-bottom:8px; padding-left:8px; border-left:3px solid #667eea;
 }
-.chart { width:100%; height: 130px; }
+.chart { width:100%; height:130px; }
 .actual-card {
   background: linear-gradient(135deg, #f8fbff, #eef4ff);
   border:1px solid #d0e0ff; border-radius:12px; padding:16px;
@@ -394,7 +362,7 @@ input:focus,select:focus {
 /* ==================== result 独有 ==================== */
 .grid-2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
 .label {
@@ -445,7 +413,7 @@ input:focus,select:focus {
 /* ==================== advice 独有 ==================== */
 .chart-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -455,10 +423,6 @@ input:focus,select:focus {
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-  
-  /* ========== 图表盒子自适应 ========== */
-  width: 100%;
-  max-width: 100%;
 }
 .chart-normal {
   margin-top: 25px;
