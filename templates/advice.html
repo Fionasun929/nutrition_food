@@ -33,13 +33,13 @@
     </div>
 
     <div style="text-align:center;margin-top:20px">
-        <a href="index.html" class="btn">🏠 返回首页</a>
+        <a href="index" class="btn">🏠 返回首页</a>
     </div>
 </div>
 
 <script>
 const u = JSON.parse(localStorage.getItem('currentUser'));
-if(!u)location.href='login.html';
+if(!u)location.href='login';
 const today = new Date().toLocaleDateString().replace(/\//g, '-');
 
 async function load(){
