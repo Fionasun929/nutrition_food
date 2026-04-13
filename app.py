@@ -18,10 +18,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://untritioner:NkFhEKI4jCFwO4
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# 全局存储type.csv营养标准（完全适配你的中文列名）
 TYPE_NUTRITION_STANDARD = {}
 
-# ====================== 模型定义 ======================
 class Food(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), index=True)
@@ -52,7 +50,6 @@ class UserFood(db.Model):
     date = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# ====================== 前端页面路由 ======================
 @app.route('/')
 @app.route('/index')
 @app.route('/index.html')
@@ -60,11 +57,10 @@ def index():
     return render_template('index.html')
 
 @app.route('/login')
-@app.route('/login.html')  # 兼容直接访问 /login.html
+@app.route('/login.html') 
 def login_page():
     return render_template('login.html')
 
-# 给你剩下的6个HTML也都加上路由（按你的文件名对应）
 @app.route('/input')
 @app.route('/input.html')
 def register_page():
@@ -95,7 +91,6 @@ def advice_page():
 def profile_page():
     return render_template('own.html')
 
-# ====================== 工具函数 ======================
 def detect_encoding(file_path):
     with open(file_path, 'rb') as f:
         raw = f.read(10000)
@@ -110,7 +105,6 @@ def clean_nutrition_value(val):
     match = re.search(r'(\d+\.?\d*)', s)
     return float(match.group(1)) if match else 0.0
 
-# ====================== 加载type.csv（完全适配你的中文列名） ======================
 def load_type_csv():
     global TYPE_NUTRITION_STANDARD
     csv_path = 'type.csv'
@@ -164,7 +158,6 @@ def load_type_csv():
 
     print(f"✅ 成功加载type.csv，共{len(TYPE_NUTRITION_STANDARD)}组分类标准")
 
-# ====================== 匹配用户营养标准 ======================
 def get_user_nutrition_standard(gender, age_start, age_end, pal):
     global TYPE_NUTRITION_STANDARD
     key = (gender, pal)
@@ -181,7 +174,6 @@ def get_user_nutrition_standard(gender, age_start, age_end, pal):
     print(f"⚠️ 未找到{gender}/{age_start}-{age_end}岁/PAL{pal}的区间，使用默认值")
     return {"energy":1800,"protein":55,"fat":60,"carbs":300,"sodium":2000}
 
-# ====================== 初始化食物数据 ======================
 def init_food():
     try:
         db.session.query(Food).delete()
@@ -269,7 +261,6 @@ def init_food():
     db.session.commit()
     print(f"✅ 成功导入{success}条食材数据")
 
-# ====================== 评分与耦合协调度 ======================
 def calculate_score(actual, target):
     weights = {"energy":0.25,"protein":0.20,"fat":0.20,"carbs":0.20,"sodium":0.15}
     score = 0
@@ -296,7 +287,6 @@ def coupling_coordination(U1, U2):
         judge = "不协调"
     return round(C,4), round(T,4), round(D,4), judge
 
-# ====================== 登录注册 ======================
 @app.route('/register', methods=['POST'])
 def register():
     try:
@@ -346,7 +336,6 @@ def login():
     except:
         return jsonify({"code":0,"msg":"登录失败"})
 
-# ====================== 个人资料修改 ======================
 @app.route('/update_profile', methods=['POST'])
 def update_profile():
     try:
@@ -380,7 +369,6 @@ def update_profile():
         print(e)
         return jsonify({"code":0,"msg":"修改失败"})
 
-# ====================== 食材操作 ======================
 @app.route('/search_food', methods=['POST'])
 def search_food():
     kw = str(request.json.get('keyword', '')).strip()
@@ -460,7 +448,6 @@ def delete_user_food():
         db.session.commit()
     return jsonify({"code":1,"msg":"删除成功"})
 
-# ====================== 百度识图 ======================
 @app.route("/recognize_food", methods=["POST"])
 def recognize_food():
     try:
@@ -522,7 +509,6 @@ def recognize_food():
     except Exception as e:
         return jsonify({"code":0,"msg":str(e)})
         
-# ====================== 拖拽更新餐次 ======================
 @app.route('/update_food_meal', methods=['POST'])
 def update_food_meal():
     d = request.json
@@ -543,7 +529,6 @@ def clear_user_foods():
     db.session.commit()
     return jsonify({"code":1,"msg":"清空成功"})
 
-# ====================== 营养汇总 ======================
 @app.route('/get_total_nutri', methods=['POST'])
 def get_total_nutri():
     try:
@@ -594,7 +579,6 @@ def get_total_nutri():
             "target_energy":1800,"target_protein":55,"target_fat":60,"target_carbs":300,"target_sodium":2000
         })
 
-# ====================== 营养预测 ======================
 @app.route('/predict_nutrition', methods=['POST'])
 def predict_nutrition():
     try:
@@ -696,7 +680,6 @@ def holt_winters_forecast(series, forecast_days=7, seasonal_periods=7):
     fitted_model = model.fit(smoothing_level=0.2, smoothing_trend=0.1, smoothing_seasonal=0.1)
     return fitted_model.forecast(steps=forecast_days)
 
-# ====================== 智能推荐 ======================
 @app.route('/get_advice_data', methods=['POST'])
 def get_advice_data():
     try:
@@ -774,7 +757,6 @@ def get_advice_data():
 
         food_contrib = sorted(food_contrib, key=lambda x: x["score"], reverse=True)
 
-        # ====================== 食材屏蔽（完全同步搜索页） ======================
         HIDE_FOOD_IDS = list(range(1590, 1782))
         hide_restricted = True
         if user:
@@ -799,28 +781,20 @@ def get_advice_data():
                 "sodium": fd.sodium
             })
 
-        # ====================== 【核心修复1】排序逻辑：只显示≥20%，按绝对值从大到小 ======================
         priority_list = []
-        # 蛋白质：只要绝对值≥20%，就生成推荐（缺口>0=需要补充）
         if abs(pct["protein"]) >= 20:
             priority_list.append( (abs(pct["protein"]), "protein", True) )
-        # 热量
         if abs(pct["energy"]) >= 20:
             priority_list.append( (abs(pct["energy"]), "energy", True) )
-        # 脂肪
         if abs(pct["fat"]) >= 20:
             priority_list.append( (abs(pct["fat"]), "fat", True) )
-        # 碳水
         if abs(pct["carbs"]) >= 20:
             priority_list.append( (abs(pct["carbs"]), "carbs", True) )
-        # 钠：只要绝对值≥20%，就生成推荐（缺口<0=超标，推荐低钠）
         if abs(pct["sodium"]) >= 20:
             priority_list.append( (abs(pct["sodium"]), "sodium", False) )
 
-        # 按绝对值从大到小排序（保证蛋白质第一）
         priority_list = sorted(priority_list, key=lambda x: x[0], reverse=True)
 
-        # ====================== 【核心修复2】生成推荐 ======================
         rec = {}
         for abs_pct, key, is_supplement in priority_list:
             if key == "protein":
@@ -846,7 +820,6 @@ def get_advice_data():
         print("Advice Error:", e)
         return jsonify({"code": 0})
 
-# ====================== 首页智能推荐TOP3 ======================
 @app.route('/get_index_recommend', methods=['POST'])
 def get_index_recommend():
     try:
@@ -877,11 +850,9 @@ def get_index_recommend():
     except:
         return jsonify({"code":0})
     
-# ====================== Render 适配启动（关键！） ======================
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         load_type_csv()
-        # init_food()  # 首次部署打开，之后注释掉，避免重复导入
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
