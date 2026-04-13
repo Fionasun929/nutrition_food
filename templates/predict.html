@@ -13,14 +13,12 @@
         <p>基于 Holt-Winters 时间序列预测模型</p>
     </div>
 
-    <!-- 未来7天摄入量预测 -->
     <div class="card">
         <div class="title">📊 未来7天营养摄入量预测</div>
         <div class="tip" id="tip1">需录入7天完整食谱以获得准确预测</div>
         <div class="grid">
             <div class="chart-item"><h4>热量 (kcal)</h4><div id="c1" class="chart"></div></div>
             
-            <!-- 显示用户每日推荐摄入量 -->
             <div class="chart-item">
                 <div class="actual-card">
                     <div class="actual-title">🎯 每日推荐摄入量</div>
@@ -50,10 +48,8 @@
 </div>
 
 <script>
-// 初始化预测图表
 const charts = [];
 for(let i=1;i<=5;i++) charts.push(echarts.init(document.getElementById('c'+i)));
-// 初始化缺口合并图表
 const gapChart = echarts.init(document.getElementById('gapChart'));
 
 function clearAll(){
@@ -79,7 +75,6 @@ window.onload = async function () {
         const data = await resp.json();
         console.log("接口数据：", data);
 
-        // 显示推荐摄入量
         document.getElementById('tgt_energy').innerText = (data.target_energy || 0).toFixed(0);
         document.getElementById('tgt_pro').innerText = (data.target_protein || 0).toFixed(1);
         document.getElementById('tgt_fat').innerText = (data.target_fat || 0).toFixed(1);
@@ -125,7 +120,6 @@ window.onload = async function () {
             });
         });
 
-        // 营养缺口：百分比显示 + 悬停显示原值
         const gapData = [
             { val: data.gap_energy, std: data.target_energy },
             { val: data.gap_protein, std: data.target_protein },
