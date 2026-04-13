@@ -71,17 +71,14 @@
     </div>
 </div>
 
-<!-- 弹窗 -->
 <div id="modal" class="modal" style="display:none;"></div>
 
 <script>
-// ====================== 你原有代码 100% 保留 ======================
 let currentUser = JSON.parse(localStorage.getItem('currentUser'));
 let selectedFood = null;
 let foodList = [];
 const today = new Date().toLocaleDateString().replace(/\//g, '-');
 
-// ====================== 图片识别 新增变量 ======================
 let recognizeQueue = [];
 let currentIndex = 0;
 
@@ -99,11 +96,9 @@ window.onload = function() {
     loadUserFoods();
     initDrag();
 
-    // 绑定图片识别
     document.getElementById('imageFile').addEventListener('change', doRecognize);
 };
 
-// 防抖
 function debounce(func, delay) {
     let timer = null;
     return function() {
@@ -112,7 +107,6 @@ function debounce(func, delay) {
     };
 }
 
-// 搜索（完全不变）
 async function searchFood() {
     const keyword = document.getElementById('kw').value.trim();
     const suggestBox = document.getElementById('suggest');
@@ -171,7 +165,6 @@ function disableAddBtn() {
     const b = document.getElementById('addBtn'); b.disabled=true; b.style.opacity='0.6';
 }
 
-// 添加食材（默认归到早餐）
 async function add() {
     if(!selectedFood) { alert('请选择食材'); return; }
     const weight = document.getElementById('w').value;
@@ -184,7 +177,7 @@ async function add() {
             food_id: selectedFood.id,
             name: selectedFood.name,
             weight,
-            meal: '早餐', // 默认进早餐
+            meal: '早餐',
             date: today
         })
     });
@@ -197,7 +190,6 @@ async function add() {
     alert('添加成功');
 }
 
-// 加载 + 渲染
 async function loadUserFoods() {
     const res = await fetch('/get_user_foods', {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -239,7 +231,6 @@ function renderFoodList() {
     }
 }
 
-// ====================== 拖拽核心逻辑（完全不变） ======================
 function initDrag() {
     const zones = document.querySelectorAll('.meal-section');
 
@@ -283,7 +274,6 @@ function initDrag() {
     });
 }
 
-// 删除 / 清空（完全不变）
 async function del(id) {
     if(!confirm('确定删除？')) return;
     await fetch('/delete_user_food', {
@@ -301,12 +291,10 @@ async function clearAll() {
     alert('已清空');
 }
 
-// ====================== 【新增】图片识别功能（不影响原有任何代码） ======================
 function openImageUpload() {
     document.getElementById('imageFile').click();
 }
 
-// 图片转base64
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -316,7 +304,6 @@ function fileToBase64(file) {
     });
 }
 
-// 执行识别
 async function doRecognize(e) {
     const file = e.target.files[0];
     if(!file) return;
@@ -354,7 +341,6 @@ async function doRecognize(e) {
     }
 }
 
-// 弹窗（带重量输入）
 function showModal() {
     if (currentIndex >= recognizeQueue.length) {
         document.getElementById('modal').innerHTML = `
@@ -400,7 +386,6 @@ async function chooseYes() {
         return;
     }
 
-    // 从弹窗输入框获取重量
     const weightInput = document.getElementById('modalWeight');
     let weight = parseInt(weightInput.value, 10);
     if (isNaN(weight) || weight < 1) {
