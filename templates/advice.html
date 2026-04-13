@@ -105,7 +105,6 @@ async function load(){
     const allFood = d.foods;
     const rec = d.recommend;
 
-    // 1. 原补充逻辑
     const keys = Object.keys(rec);
     for (let key of keys) {
         if (key === "protein" && gap.protein > 0) {
@@ -134,8 +133,6 @@ async function load(){
         }
     }
 
-    // ====================== 【唯一修改：按实际摄入量 <500 才补钠】 ======================
-    // 实际钠摄入量 <500mg → 推荐补充；缺口<0（超标）→ 不显示补充
     if (d.sodium_intake < 500 && gap.sodium >= 0) {
         html += `<div class="recommend-card" style="border-left-color:#4299e1">
             <div class="recommend-title">🧂 钠摄入偏低，建议适量补充</div>
@@ -147,7 +144,6 @@ async function load(){
         </div>`;
     }
 
-    // 超标减少逻辑
     function getTopFood(nutriKey) {
         return [...allFood].sort((a, b) => b[nutriKey] - a[nutriKey])[0] || null;
     }
@@ -197,7 +193,6 @@ async function load(){
         }
     }
     
-    // 钠只有 <0 才显示超标
     if (gap.sodium < 0) {
         const top = getTopFood('sodium');
         if (top) {
