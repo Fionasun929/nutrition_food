@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>个人中心 - 膳食营养健康可视化系统</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+<div class="header">
+    <h2>👤 个人中心</h2>
+    <a href="index.html">← 返回主页</a>
+</div>
+
+<div class="card">
+    <div class="form-group">
+        <label>账号</label>
+        <input type="text" id="username" disabled>
+    </div>
+    <div class="form-group">
+        <label>性别</label>
+        <select id="gender">
+            <option value="男">男</option>
+            <option value="女">女</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>年龄段</label>
+       <select id="ageRange">
+    <option value="0,0.5">0-6个月</option>
+    <option value="0.5,1">6-12个月</option>
+    <option value="1,2">1岁</option>
+    <option value="2,3">2岁</option>
+    <option value="3,4">3岁</option>
+    <option value="4,5">4岁</option>
+    <option value="5,6">5岁</option>
+    <option value="6,7">6岁</option>
+    <option value="7,8">7岁</option>
+    <option value="8,9">8岁</option>
+    <option value="9,10">9岁</option>
+    <option value="10,11">10岁</option>
+    <option value="11,12">11岁</option>
+    <option value="12,14">12-14岁</option>
+    <option value="14,17">15-17岁</option>
+    <option value="18,29">18-29岁</option>
+    <option value="30,49">30-49岁</option>
+    <option value="50,64">50-64岁</option>
+    <option value="65,74">65-74岁</option>
+    <option value="75,120">75岁以上</option>
+</select>
+    </div>
+    <div class="form-group">
+        <label>活动水平</label>
+        <select id="pal">
+            <!-- 动态生成 -->
+        </select>
+    </div>
+    <div class="form-group">
+        <label>修改密码（留空不修改）</label>
+        <input type="password" id="password" placeholder="请输入新密码">
+    </div>
+    <div style="text-align:center">
+        <button class="btn" onclick="saveProfile()">💾 保存修改</button>
+    </div>
+    <div class="msg" id="msg"></div>
+
+    <div class="standard-box">
+        <h4>📊 您的每日营养推荐标准</h4>
+        <div class="standard-item">
+            <span>热量</span>
+            <span id="targetEnergy">-- kcal</span>
+        </div>
+        <div class="standard-item">
+            <span>蛋白质</span>
+            <span id="targetProtein">-- g</span>
+        </div>
+        <div class="standard-item">
+            <span>脂肪</span>
+            <span id="targetFat">-- g</span>
+        </div>
+        <div class="standard-item">
+            <span>碳水化合物</span>
+            <span id="targetCarbs">-- g</span>
+        </div>
+        <div class="standard-item">
+            <span>钠</span>
+            <span id="targetSodium">-- mg</span>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+const u = JSON.parse(localStorage.getItem('currentUser'));
+if (!u) {
+    alert('请先登录！');
+    location.href = 'login.html';
+}
+
+document.getElementById('username').value = u.username;
+document.getElementById('gender').value = u.gender || '男';
+document.getElementById('ageRange').value = u.ageRange || '18,29';
+
+// ======================
+// 核心修复：11岁PAL3+不可选 100%生效
+// ======================
+function updatePalOptions() {
+    const ageSel = document.getElementById('ageRange');
+    const palSel = document.getElementById('pal');
+    const val = ageSel.value;
+    const [start, end] = val.split(',').map(Number);
+
+    palSel.innerHTML = '';
+
+    // ✅ 修正判断：11岁end=12，用start判断，覆盖所有1-11岁
+    if (start < 12) {
+        let opt = document.createElement('option');
+        
+        if (end <= 1) {
+            opt.value = "1";
+            opt.textContent = "婴儿期（0-1岁）";
+        } else if (end <= 3) {
+            opt.value = "1";
+            opt.textContent = "儿童（1-3岁）";
+        } else if (end <= 6) {
+            opt.value = "1";
+            opt.textContent = "儿童（4-6岁）";
+        } else if (start == 7) {
+            opt.value = "1";
+            opt.textContent = "儿童（7岁）";
+        } else if (start == 8) {
+            opt.value = "2";
+            opt.textContent = "儿童（8岁）";
+        } else if (start == 9) {
+            opt.value = "1";
+            opt.textContent = "儿童（9岁）";
+        } else if (start == 10) {
+            opt.value = "2";
+            opt.textContent = "儿童（10岁）";
+        } else if (start == 11) {
+            // ✅ 11岁强制PAL3，显示儿童（11岁）
+            opt.value = "3";
+            opt.textContent = "儿童（11岁）";
+        }
+
+        palSel.appendChild(opt);
+        // ✅ 强制禁用，完全不可选
+        palSel.disabled = true;
+        palSel.style.backgroundColor = "#f5f5f5";
+    } else {
+        // 12岁以上正常可选
+        palSel.disabled = false;
+        palSel.style.backgroundColor = "#fff";
+        const list = [
+            {value:"1", text:"低活动水平"},
+            {value:"2", text:"中活动水平"},
+            {value:"3", text:"高活动水平"}
+        ];
+        list.forEach(item => {
+            const o = document.createElement('option');
+            o.value = item.value;
+            o.textContent = item.text;
+            palSel.appendChild(o);
+        });
+        palSel.value = u.pal || "1";
+    }
+}
+
+document.getElementById('ageRange').addEventListener('change', updatePalOptions);
+
+window.addEventListener('DOMContentLoaded', () => {
+    updatePalOptions();
+    loadUserNutritionStandard();
+});
+
+async function loadUserNutritionStandard() {
+    try {
+        const res = await fetch('/get_total_nutri', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: u.userId, foods: [] })
+        });
+        const data = await res.json();
+        document.getElementById('targetEnergy').innerText = (data.target_energy || 0) + ' kcal';
+        document.getElementById('targetProtein').innerText = (data.target_protein || 0) + ' g';
+        document.getElementById('targetFat').innerText = (data.target_fat || 0) + ' g';
+        document.getElementById('targetCarbs').innerText = (data.target_carbs || 0) + ' g';
+        document.getElementById('targetSodium').innerText = (data.target_sodium || 0) + ' mg';
+    } catch (e) {
+        console.error('加载营养标准失败:', e);
+        document.getElementById('msg').innerText = "⚠️ 营养标准加载失败，请检查后端";
+    }
+}
+
+async function saveProfile() {
+    const gender = document.getElementById('gender').value;
+    const ageRange = document.getElementById('ageRange').value;
+    const pal = document.getElementById('pal').value;
+    const password = document.getElementById('password').value.trim();
+
+    try {
+        const res = await fetch('/update_profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: u.userId,
+                gender: gender,
+                ageRange: ageRange,
+                pal: pal,
+                password: password || u.password
+            })
+        });
+        const data = await res.json();
+        if (data.code === 1) {
+            u.gender = gender;
+            u.ageRange = ageRange;
+            u.pal = pal;
+            if (password) u.password = password;
+            localStorage.setItem('currentUser', JSON.stringify(u));
+
+            await loadUserNutritionStandard();
+            document.getElementById('msg').innerText = "✅ 修改成功！";
+            alert('修改成功！');
+        } else {
+            document.getElementById('msg').innerText = "❌ 保存失败：" + (data.msg || '未知错误');
+            alert('保存失败：' + (data.msg || '未知错误'));
+        }
+    } catch (e) {
+        console.error('保存失败:', e);
+        document.getElementById('msg').innerText = "❌ 网络错误，请检查后端";
+        alert('网络错误，请检查后端服务');
+    }
+}
+</script>
+</body>
+</html>
