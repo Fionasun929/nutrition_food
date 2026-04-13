@@ -57,6 +57,42 @@ class UserFood(db.Model):
 def index():
     return render_template('index.html')
 
+@app.route('/login')
+@app.route('/login.html')  # 兼容直接访问 /login.html
+def login_page():
+    return render_template('login.html')
+
+# 给你剩下的6个HTML也都加上路由（按你的文件名对应）
+@app.route('/input')
+@app.route('/input.html')
+def register_page():
+    return render_template('input.html')
+
+@app.route('/history')
+@app.route('/history')
+def home_page():
+    return render_template('history.html')
+
+@app.route('/result')
+@app.route('/result.html')
+def analysis_page():
+    return render_template('result.html')
+
+@app.route('/predict')
+@app.route('/predict.html')
+def predict_page():
+    return render_template('predict.html')
+
+@app.route('/advice')
+@app.route('/advice.html')
+def advice_page():
+    return render_template('advice.html')
+
+@app.route('/own')
+@app.route('/own.html')
+def profile_page():
+    return render_template('own.html')
+
 # ====================== 工具函数 ======================
 def detect_encoding(file_path):
     with open(file_path, 'rb') as f:
