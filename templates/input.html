@@ -65,8 +65,8 @@
     </div>
 
     <div class="btn-group">
-        <a href="index" class="btn">返回首页</a>
-        <a href="result" class="btn btn-analysis">📈 分析报告</a>
+        <a href="/index" class="btn">返回首页</a>
+        <a href="/result" class="btn btn-analysis">📈 分析报告</a>
         <button class="btn btn-danger" style="margin-left:10px" onclick="clearAll()">清空所有食材</button>
     </div>
 </div>
@@ -87,7 +87,7 @@ let currentIndex = 0;
 
 window.onload = function() {
     if(!currentUser) {
-        location.href = 'login';
+        location.href = '/login';
         return;
     }
     document.getElementById('kw').addEventListener('input', debounce(searchFood, 300));
