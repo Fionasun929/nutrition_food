@@ -25,15 +25,15 @@
 <div class="card">
     <h3>📊 今日营养速览</h3>
     <div>热量 <span id="kcal" class="stat">0</span> kcal</div>
-    <div class="progress"><div class="progress-bar" id="p_energy"></div></div>
+    <div class="progress"><div class="progress-bar" id="p_energy" style="background:#94a3b8"></div></div>
     <div>蛋白质 <span id="pro" class="stat">0g</span></div>
-    <div class="progress"><div class="progress-bar" id="p_pro"></div></div>
+    <div class="progress"><div class="progress-bar" id="p_pro" style="background:#94a3b8"></div></div>
     <div>脂肪 <span id="fat" class="stat">0g</span></div>
-    <div class="progress"><div class="progress-bar" id="p_fat"></div></div>
+    <div class="progress"><div class="progress-bar" id="p_fat" style="background:#94a3b8"></div></div>
     <div>碳水 <span id="car" class="stat">0g</span></div>
-    <div class="progress"><div class="progress-bar" id="p_car"></div></div>
+    <div class="progress"><div class="progress-bar" id="p_car" style="background:#94a3b8"></div></div>
     <div>钠 <span id="na" class="stat">0mg</span></div>
-    <div class="progress"><div class="progress-bar" id="p_na"></div></div>
+    <div class="progress"><div class="progress-bar" id="p_na" style="background:#94a3b8"></div></div>
     <div style="margin-top:20px;display:flex;gap:10px;justify-content:center">
         <a href="/input" class="btn">快速录入</a>
     </div>
@@ -86,7 +86,6 @@
 <div class="footer">数据来源：《中国食物成分表标准版》第6版</div>
 </div>
 
-<!-- 导出弹窗容器 -->
 <div id="exportModal" style="display:none"></div>
 
 <script>
@@ -97,7 +96,6 @@ const today = new Date().toLocaleDateString().replace(/\//g, '-');
 document.getElementById('uname').innerText=u.username;
 document.getElementById('av').innerText=u.username.charAt(0).toUpperCase();
 
-// 营养字段（与result保持一致）
 const NUTRI_FIELDS = [
     "水分","能量","蛋白质","脂肪","碳水化合物",
     "不溶性膳食纤维","胆固醇","灰分","总维生素A","胡萝卜素",
@@ -116,7 +114,6 @@ function logout(){
 let scoreChart = echarts.init(document.getElementById('scoreChart'));
 let coordinationChart = echarts.init(document.getElementById('coordinationChart'));
 
-// ====================== 修复：仪表盘配置（宽度25 + 自动渐变颜色） ======================
 const baseGaugeOption = (maxVal) => ({
     series: [{
         type: 'gauge',
@@ -133,7 +130,7 @@ const baseGaugeOption = (maxVal) => ({
         },
         axisLine: {
             lineStyle: {
-                width: 25, // 圆环宽度固定 25
+                width: 25, 
                 color: [[1, '#e9eef5']]
             }
         },
@@ -150,12 +147,9 @@ const baseGaugeOption = (maxVal) => ({
 scoreChart.setOption(baseGaugeOption(100));
 coordinationChart.setOption(baseGaugeOption(10));
 
-// ====================== 修复：更新图表（自动渐变：0 深红 → 最大值深绿） ======================
 function updateCharts(scoreValue, coordinationValue) {
-    // 核心：根据数值自动计算渐变色 0~max → 红→橙→绿
     const getGradientColor = (value, max) => {
         const ratio = value / max;
-        // 0 = 深红 (#b71c1c) → 1 = 深绿 (#1b5e20)
         if (ratio >= 1) return '#1b5e20';
         if (ratio >= 0.7) return '#38a169';
         if (ratio >= 0.5) return '#f57c00';
@@ -171,7 +165,6 @@ function updateCharts(scoreValue, coordinationValue) {
     let coordRounded = coordinationValue.toFixed(2);
     const centerFontSize = 28;
     
-    // 评分仪表盘
     scoreChart.setOption({
         series: [{
             progress: { itemStyle: { color: scoreColor } },
@@ -183,7 +176,6 @@ function updateCharts(scoreValue, coordinationValue) {
         ]
     });
     
-    // 协调度仪表盘
     coordinationChart.setOption({
         series: [{
             progress: { itemStyle: { color: coordColor } },
@@ -191,12 +183,11 @@ function updateCharts(scoreValue, coordinationValue) {
         }],
         graphic: [
             { type: 'text', left: 'center', top: '42%', style: { text: coordRounded, fontSize: centerFontSize, fontWeight: 'bold', fill: coordColor } },
-            { type: 'text', left: 'center', top: '66%', style: { text: '指数', fontSize: 14, fill: '#94a3b8' } }
+            { type: 'text', left: 'center', top: '66%', style: { text: '指数', fontSize: 14, fill: '#D5DCD5' } }
         ]
     });
 }
 
-// 清洗营养数值
 function cleanNutriValue(val) {
     if (val === null || val === undefined) return 0;
     let s = String(val).trim();
@@ -206,7 +197,6 @@ function cleanNutriValue(val) {
     return m ? parseFloat(m[1]) : 0;
 }
 
-// 计算总营养
 function calculateTotalNutrition(foods) {
     const total = {};
     NUTRI_FIELDS.forEach(f => total[f] = 0);
@@ -301,7 +291,6 @@ async function loadTotal(){
     }
 }
 
-// ====================== 导出弹窗（与result完全一致） ======================
 function showExportModal() {
     if(!window.reportData) { alert('暂无报告数据，请先录入食材！'); return; }
     let opts = "";
