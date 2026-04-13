@@ -774,6 +774,7 @@ def get_advice_data():
 
         food_contrib = sorted(food_contrib, key=lambda x: x["score"], reverse=True)
 
+        # ====================== 食材屏蔽（完全同步搜索页） ======================
         HIDE_FOOD_IDS = list(range(1590, 1782))
         hide_restricted = True
         if user:
@@ -798,19 +799,28 @@ def get_advice_data():
                 "sodium": fd.sodium
             })
 
+        # ====================== 【核心修复1】排序逻辑：只显示≥20%，按绝对值从大到小 ======================
         priority_list = []
+        # 蛋白质：只要绝对值≥20%，就生成推荐（缺口>0=需要补充）
         if abs(pct["protein"]) >= 20:
             priority_list.append( (abs(pct["protein"]), "protein", True) )
+        # 热量
         if abs(pct["energy"]) >= 20:
             priority_list.append( (abs(pct["energy"]), "energy", True) )
+        # 脂肪
         if abs(pct["fat"]) >= 20:
             priority_list.append( (abs(pct["fat"]), "fat", True) )
+        # 碳水
         if abs(pct["carbs"]) >= 20:
             priority_list.append( (abs(pct["carbs"]), "carbs", True) )
+        # 钠：只要绝对值≥20%，就生成推荐（缺口<0=超标，推荐低钠）
         if abs(pct["sodium"]) >= 20:
             priority_list.append( (abs(pct["sodium"]), "sodium", False) )
 
+        # 按绝对值从大到小排序（保证蛋白质第一）
         priority_list = sorted(priority_list, key=lambda x: x[0], reverse=True)
+
+        # ====================== 【核心修复2】生成推荐 ======================
         rec = {}
         for abs_pct, key, is_supplement in priority_list:
             if key == "protein":
@@ -855,7 +865,7 @@ def get_index_recommend():
 
         top_energy = sorted(data, key=lambda x: x["energy"], reverse=True)[:3]
         top_protein = sorted(data, key=lambda x: x["protein"], reverse=True)[:3]
-        top_fat = sorted(data, key=lambda x: x["fat"], reverse=True)[:3]
+        top_fat = sorted(data, sorted(data, key=lambda x: x["fat"], reverse=True)[:3])
         top_carbs = sorted(data, key=lambda x: x["carbs"], reverse=True)[:3]
 
         return jsonify({
@@ -872,6 +882,6 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         load_type_csv()
-        init_food()  # 首次部署打开，之后注释掉，避免重复导入
+        # init_food()  # 首次部署打开，之后注释掉，避免重复导入
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
