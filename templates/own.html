@@ -119,28 +119,39 @@ function updatePalOptions() {
         if (end <= 1) {
             opt.value = "1";
             opt.textContent = "婴儿期（0-1岁）";
-        } else if (end <= 3) {
+        } else if (start == 1) {
             opt.value = "1";
             opt.textContent = "儿童（1-3岁）";
-        } else if (end <= 6) {
+        } else if (start == 2) {
+            opt.value = "2";
+            opt.textContent = "儿童（1-3岁）";
+        } else if (start == 3) {
+            opt.value = "3";
+            opt.textContent = "儿童（1-3岁）";
+        } else if (start == 4) {
             opt.value = "1";
+            opt.textContent = "儿童（4-6岁）";
+        } else if (start == 5) {
+            opt.value = "2";
+            opt.textContent = "儿童（4-6岁）";
+        } else if (start == 6) {
+            opt.value = "3";
             opt.textContent = "儿童（4-6岁）";
         } else if (start == 7) {
             opt.value = "1";
-            opt.textContent = "儿童（7岁）";
-        } else if (start == 8) {
+            opt.textContent = "儿童（7-8岁）";
+        } else if (start <= 8) {
             opt.value = "2";
-            opt.textContent = "儿童（8岁）";
+            opt.textContent = "儿童（7-8岁）";
         } else if (start == 9) {
             opt.value = "1";
-            opt.textContent = "儿童（9岁）";
+            opt.textContent = "儿童（9-11岁）";
         } else if (start == 10) {
             opt.value = "2";
-            opt.textContent = "儿童（10岁）";
+            opt.textContent = "儿童（9-11岁）";
         } else if (start == 11) {
-            // ✅ 11岁强制PAL3，显示儿童（11岁）
             opt.value = "3";
-            opt.textContent = "儿童（11岁）";
+            opt.textContent = "儿童（9-11岁）";
         }
 
         palSel.appendChild(opt);
