@@ -231,7 +231,10 @@ async function saveProfile() {
 
             await loadUserNutritionStandard();
             document.getElementById('msg').innerText = "✅ 修改成功！";
-            alert('修改成功！');
+            alert('✅ 修改成功！');
+
+            // ✅ 关键：强制刷新页面，确保所有接口使用最新用户信息
+            setTimeout(() => location.reload(), 500);
         } else {
             document.getElementById('msg').innerText = "❌ 保存失败：" + (data.msg || '未知错误');
             alert('保存失败：' + (data.msg || '未知错误'));
