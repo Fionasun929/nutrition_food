@@ -93,7 +93,6 @@ function calculateTotalNutrition(foods) {
     return total;
 }
 
-// 原版官方建议
 function getOfficialDietAdvice(d, target) {
     let sug = []; let taboo = []; let tgt = target;
     if (d.energy < tgt.energy * 0.8) {
@@ -159,7 +158,6 @@ function initToggle() {
     };
 }
 
-// 导出弹窗
 function showExportModal() {
     if (!window.reportData) { alert("暂无数据可导出"); return; }
     let opts = "";
@@ -229,7 +227,6 @@ function doExport() {
     alert("导出成功！");
 }
 
-// 页面加载
 async function loadReport() {
     try {
         const foodsRes = await fetch('/get_user_foods', {
@@ -254,7 +251,6 @@ async function loadReport() {
         document.getElementById('score').innerText = d.score || 0;
         document.getElementById('scoreText').innerText = d.score >= 80 ? '优秀' : d.score >= 60 ? '合格' : '需改善';
 
-        // 营养素
         const g = document.getElementById('nutriGrid');
         NUTRI_FIELDS.forEach((f, i) => {
             const div = document.createElement('div');
@@ -263,7 +259,6 @@ async function loadReport() {
             g.appendChild(div);
         });
 
-        // 食材 + 餐次
         const foodEl = document.getElementById('foodList');
         if (foods.length === 0) {
             foodEl.innerHTML = "<div class='food-item'>暂无食材记录</div>";
@@ -276,7 +271,6 @@ async function loadReport() {
             `).join('');
         }
 
-        // 建议 & 禁忌
         const { sug, taboo } = getOfficialDietAdvice(d, {
             energy: d.target_energy, protein: d.target_protein,
             fat: d.target_fat, carbs: d.target_carbs, sodium: d.target_sodium
