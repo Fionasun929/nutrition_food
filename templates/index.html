@@ -16,7 +16,7 @@
             <div class="user-name" id="uname"></div>
             <div style="font-size:12px;opacity:0.8" id="age"></div>
         </div>
-        <a href="own.html" class="btn-sm">个人中心</a>
+        <a href="/own.html" class="btn-sm">个人中心</a>
         <a href="javascript:logout()" class="btn-sm">退出登录</a>
     </div>
 </div>
@@ -35,7 +35,7 @@
     <div>钠 <span id="na" class="stat">0mg</span></div>
     <div class="progress"><div class="progress-bar" id="p_na"></div></div>
     <div style="margin-top:20px;display:flex;gap:10px;justify-content:center">
-        <a href="input" class="btn">快速录入</a>
+        <a href="/input" class="btn">快速录入</a>
     </div>
 </div>
 
@@ -60,7 +60,7 @@
         </div>
     </div>
     <div style="margin-top: 12px; text-align: center;">
-        <a href="result" class="btn">📋 今日报告详情</a>
+        <a href="/result" class="btn">📋 今日报告详情</a>
     </div>
 </div>
 
@@ -72,15 +72,15 @@
     <div id="rec" class="gap-text"></div>
     
     <div style="margin-top:20px;display:flex;justify-content:center">
-        <a href="advice" class="btn">查看详情</a>
+        <a href="/advice" class="btn">查看详情</a>
     </div>
 </div>
 </div>
 
 <div class="bottom-buttons">
-    <a href="history" class="btn btn-outline">📈 历史数据</a>
+    <a href="/history" class="btn btn-outline">📈 历史数据</a>
     <button class="btn" onclick="showExportModal()">📤 导出报告</button>
-    <a href="predict" class="btn btn-outline">🔮 营养预测</a>
+    <a href="/predict" class="btn btn-outline">🔮 营养预测</a>
 </div>
 
 <div class="footer">数据来源：《中国食物成分表》</div>
@@ -91,7 +91,7 @@
 
 <script>
 const u = JSON.parse(localStorage.getItem('currentUser'));
-if(!u) location.href='login';
+if(!u) location.href='/login';
 
 const today = new Date().toLocaleDateString().replace(/\//g, '-');
 document.getElementById('uname').innerText=u.username;
@@ -109,7 +109,7 @@ const DEFAULT_EXPORT = ["能量","蛋白质","脂肪","碳水化合物","钠"];
 function logout(){
     if(confirm('确认退出？')){
         localStorage.removeItem('currentUser');
-        location.href='login';
+        location.href='/login';
     }
 }
 
