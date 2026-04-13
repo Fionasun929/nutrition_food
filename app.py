@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from datetime import datetime, timedelta
@@ -13,6 +13,7 @@ import requests
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 app = Flask(__name__)
+app.config['PREFERRED_URL_SCHEME'] = 'https'
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://untritioner:NkFhEKI4jCFwO4vmFwtDIHJVDHXmffLb@dpg-d7e6hpe7r5hc73a6uou0-a/nutrition_food'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -54,6 +55,7 @@ class UserFood(db.Model):
 
 # ====================== 前端页面路由 ======================
 @app.route('/')
+@app.route('/index.html')
 def index():
     return render_template('index.html')
 
