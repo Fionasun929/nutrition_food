@@ -870,6 +870,6 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         load_type_csv()
-        # init_food()  # 首次部署打开，之后注释掉，避免重复导入
+        init_food()  # 首次部署打开，之后注释掉，避免重复导入
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
