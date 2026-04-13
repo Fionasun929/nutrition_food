@@ -43,13 +43,13 @@ if(!u)location.href='/login';
 const today = new Date().toLocaleDateString().replace(/\//g, '-');
 
 async function load(){
-    const res = await fetch('http://127.0.0.1:5000/get_user_foods', {
+    const res = await fetch('/get_user_foods', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({user_id:u.userId, date:today})
     });
     const foods = (await res.json()).data || [];
 
-    const adv = await fetch('http://127.0.0.1:5000/get_advice_data', {
+    const adv = await fetch('/get_advice_data', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({user_id:u.userId, foods:foods})
     });
