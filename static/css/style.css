@@ -266,7 +266,6 @@ body {
 .btn-group { margin-top:12px; display:flex; gap:8px; }
 .select-all-btn { padding:6px 12px; background:#eef4ff; color:#3568e7; border:none; border-radius:6px; cursor:pointer; }
 
-/* ==================== input 独有 ==================== */
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-weight: 500; }
 .form-group input,
@@ -303,7 +302,6 @@ body {
 .btn-yes { background:#38a169 !important; color:white; }
 .btn-no { background:#999 !important; color:white; }
 
-/* ==================== history 独有 ==================== */
 .food-tag {
   background:#e2e8f0; padding:6px 12px; border-radius:20px; font-size:13px; margin:4px;
 }
@@ -322,7 +320,6 @@ body {
 .food-name { font-weight:500; }
 .food-weight { color:#666; }
 
-/* ==================== own 独有 ==================== */
 label { display:block; color:#333; margin-bottom:8px; font-weight:500; }
 input,select {
   width:100%; padding:14px 16px; border:1px solid #e2e8f0; border-radius:12px;
@@ -338,7 +335,6 @@ input:focus,select:focus {
 .standard-item { display:flex; justify-content:space-between; margin-bottom:12px; }
 .msg { text-align:center; margin-top:16px; font-size:14px; }
 
-/* ==================== predict 独有 ==================== */
 .title { font-size:20px; font-weight:600; margin-bottom:16px; color:#333; }
 .grid {
   display:grid; grid-template-columns: repeat(3,1fr); gap:16px; margin-bottom:16px;
@@ -359,7 +355,6 @@ input:focus,select:focus {
 .tip { text-align:center; color:#999; font-size:14px; margin:-10px 0 16px 0; display:none; }
 .text-center { text-align:center; margin-top:10px; }
 
-/* ==================== result 独有 ==================== */
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -410,7 +405,6 @@ input:focus,select:focus {
   font-size: 14px;
 }
 
-/* ==================== advice 独有 ==================== */
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
