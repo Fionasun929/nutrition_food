@@ -7,7 +7,7 @@
 :root {
   --main-color: #667eea;
   --main-color-dark: #5a67d8;
-  --card-bg: rgba(247, 248, 252, 0.5);
+  --card-bg: rgba(247, 248, 252, 0.8);
   --chart-card-bg: rgba(247, 248, 252, 0);
 }
 
