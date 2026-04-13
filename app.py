@@ -14,7 +14,7 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 app = Flask(__name__)
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://untritioner:NkFhEKI4jCFwO4vmFwtDIHJVDHXmffLb@dpg-d7e6hpe7r5hc73a6uou0-a/nutrition_food'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
