@@ -202,9 +202,6 @@ async function loadWeeklyTrend() {
     trendChart.setOption(chartOption);
 }
 
-// ==============================
-// 已修改：带上 user_id 取真实评分
-// ==============================
 async function loadDailyScore(userId, date) {
     try {
         const foodsResponse = await fetch('/get_user_foods', {
@@ -231,9 +228,6 @@ async function loadDailyScore(userId, date) {
     }
 }
 
-// ==============================
-// 已修改：带上 user_id 取真实营养
-// ==============================
 async function loadDateData() {
     const selectedDate = document.getElementById('datePicker').value;
     if(!selectedDate) {
