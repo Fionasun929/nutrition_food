@@ -2,7 +2,6 @@ flask==2.3.3
 flask-sqlalchemy==3.1.1
 flask-cors==4.0.0
 pandas==2.1.4
-numpy==1.26.3
 chardet==5.2.0
 requests==2.31.0
 statsmodels==0.14.1
