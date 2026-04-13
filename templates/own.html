@@ -9,7 +9,7 @@
 <div class="container">
 <div class="header">
     <h2>👤 个人中心</h2>
-    <a href="index">← 返回主页</a>
+    <a href="/index">← 返回主页</a>
 </div>
 
 <div class="card">
@@ -94,7 +94,7 @@
 const u = JSON.parse(localStorage.getItem('currentUser'));
 if (!u) {
     alert('请先登录！');
-    location.href = 'login';
+    location.href = '/login';
 }
 
 document.getElementById('username').value = u.username;
