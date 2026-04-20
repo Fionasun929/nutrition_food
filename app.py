@@ -18,6 +18,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://untritioner:NkFhEKI4jCFwO4
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+with app.app_context():
+    db.drop_all()       
+    db.create_all()    
+
 TYPE_NUTRITION_STANDARD = {}
 
 class Food(db.Model):
