@@ -283,7 +283,7 @@ async function loadTotal(){
         let recHtml = '';
         if (topNeed) {
             // 规则3：直接调用advice接口（全局统一屏蔽+统一推荐，不再重复接口）
-            const advRes = await fetch('http://127.0.0.1:5000/get_advice_data', {
+            const advRes = await fetch('/get_advice_data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: u.userId, foods: foods })
