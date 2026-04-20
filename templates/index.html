@@ -16,7 +16,7 @@
             <div class="user-name" id="uname"></div>
             <div style="font-size:12px;opacity:0.8" id="age"></div>
         </div>
-        <a href="/own.html" class="btn-sm">个人中心</a>
+        <a href="/own" class="btn-sm">个人中心</a>
         <a href="javascript:logout()" class="btn-sm">退出登录</a>
     </div>
 </div>
@@ -254,31 +254,52 @@ async function loadTotal(){
         if(gapHtml === '') gapHtml = '<div class="success">✅ 暂无明显营养缺口</div>';
         document.getElementById('gap').innerHTML = gapHtml;
         
+        const gap = {
+            energy: target.energy - d.energy,
+            protein: target.protein - d.protein,
+            fat: target.fat - d.fat,
+            carbs: target.carbs - d.carbs,
+            sodium: target.sodium - d.sodium
+        };
+        const pct = {
+            energy: Math.abs(gap.energy / target.energy * 100),
+            protein: Math.abs(gap.protein / target.protein * 100),
+            fat: Math.abs(gap.fat / target.fat * 100),
+            carbs: Math.abs(gap.carbs / target.carbs * 100),
+            sodium: Math.abs(gap.sodium / target.sodium * 100)
+        };
+
+        let supplementGaps = [];
+        // 只加真正缺口、需要补充的项目（超标完全排除）
+        if (gap.energy > 0) supplementGaps.push({ key: 'energy', name: '热量', pct: pct.energy });
+        if (gap.protein > 0) supplementGaps.push({ key: 'protein', name: '蛋白质', pct: pct.protein });
+        if (gap.fat > 0) supplementGaps.push({ key: 'fat', name: '脂肪', pct: pct.fat });
+        if (gap.carbs > 0) supplementGaps.push({ key: 'carbs', name: '碳水', pct: pct.carbs });
+
+        // 规则2：按缺口严重程度排序，只取最严重的1项
+        supplementGaps.sort((a, b) => b.pct - a.pct);
+        const topNeed = supplementGaps.length > 0 ? supplementGaps[0] : null;
+
         let recHtml = '';
-        const gaps = [
-            { key: 'protein', name: '蛋白质', pct: Math.abs((target.protein - d.protein)/target.protein), unit: 'g' },
-            { key: 'energy', name: '热量', pct: Math.abs((target.energy - d.energy)/target.energy), unit: 'kcal' },
-            { key: 'fat', name: '脂肪', pct: Math.abs((target.fat - d.fat)/target.fat), unit: 'g' },
-            { key: 'carbs', name: '碳水', pct: Math.abs((target.carbs - d.carbs)/target.carbs), unit: 'g' },
-            { key: 'sodium', name: '钠', pct: Math.abs((target.sodium - d.sodium)/target.sodium), unit: 'mg', isLow: true }
-        ];
-        gaps.sort((a,b)=>b.pct-a.pct);
-        const topNeed = gaps[0];
-        
-        const resRec = await fetch('/get_index_recommend', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: u.userId })
-        });
-        const topData = await resRec.json();
-        const top3 = topData[topNeed.key]?.slice(0,3) || [];
-        
-        if (topNeed.key === 'sodium' && d.sodium > target.sodium*1.1) {
-            recHtml = `<div>⚠️ 钠摄入超标，推荐低钠食材：</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">${top3.map(i=>`<span style="padding:6px 12px;background:#f0f2ff;border-radius:8px;font-size:14px;">${i.name}</span>`).join('')}</div>`;
-        } else if (topNeed.pct>0.2) {
-            recHtml = `<div>🥩 推荐补充${topNeed.name}：</div><div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">${top3.map(i=>`<span style="padding:6px 12px;background:#f0f2ff;border-radius:8px;font-size:14px;">${i.name} ${i[topNeed.key]}${topNeed.unit}</span>`).join('')}</div>`;
+        if (topNeed) {
+            // 规则3：直接调用advice接口（全局统一屏蔽+统一推荐，不再重复接口）
+            const advRes = await fetch('http://127.0.0.1:5000/get_advice_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: u.userId, foods: foods })
+            });
+            const advData = await advRes.json();
+            // 规则4：只取前3个食材
+            const foodList = (advData.recommend[topNeed.key] || []).slice(0, 3);
+
+            recHtml = `<div>🥩 推荐补充${topNeed.name}：</div>
+                <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">
+                ${foodList.map(i=>`<span style="padding:6px 12px;background:#f0f2ff;border-radius:8px;font-size:14px;">${i.name}</span>`).join('')}
+                </div>`;
         } else {
             recHtml = '<div>👍 饮食均衡，无需特殊调整</div>';
         }
+
         document.getElementById('rec').innerHTML = recHtml;
         
         window.reportData = d;
