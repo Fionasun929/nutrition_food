@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>历史数据 - 营养健康管理系统</title>
-<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -66,36 +66,37 @@
     <div>
         <h4 style="margin-bottom:12px">🍽️ 当日食材清单</h4>
         <div class="food-list" id="dailyFoodList">
-            <div style="text-align:center;padding:20px;color:#999">请选择日期查看食材清单</div>
+            <div style="text-align:center;padding:20px;color:#999">请选择日期查看食材记录</div>
         </div>
     </div>
 </div>
 
 <div style="text-align:center;margin-top:20px">
-    <a href="/index" class="btn">🏠 返回首页</a>
+    <a href="index.html" class="btn">🏠 返回首页</a>
 </div>
 
-<div class="footer">数据来源：《中国食物成分表标准版》第6版</div>
+<div class="footer">数据来源：《中国食物成分表》</div>
 </div>
 
 <script>
 const u = JSON.parse(localStorage.getItem('currentUser'));
-if(!u)location.href='/login';
+if(!u)location.href='login.html';
 
-const today = new Date().toLocaleDateString().replace(/\//g, '-');
+const userId = u.user_id || u.userId; 
+console.log('当前登录用户ID：', userId);
+
 const todayFormatted = new Date().toISOString().split('T')[0];
 
-document.getElementById('uname').innerText=u.username;
-document.getElementById('age').innerText={child:'儿童',adult:'成人',elderly:'老年人'}[u.ageGroup];
-document.getElementById('av').innerText=u.username.charAt(0).toUpperCase();
+document.getElementById('uname').innerText = u.username;
+document.getElementById('av').innerText = u.username.charAt(0).toUpperCase();
 
 document.getElementById('datePicker').value = todayFormatted;
-document.getElementById('currentDateDisplay').innerText = `当前查看：${formatDate(today)}`;
+document.getElementById('currentDateDisplay').innerText = `当前查看：${formatDate(todayFormatted)}`;
 
 function logout(){
     if(confirm('确认退出？')){
         localStorage.removeItem('currentUser');
-        location.href='/login';
+        location.href='login.html';
     }
 }
 
@@ -107,6 +108,16 @@ function formatDate(dateString) {
     return `${year}年${month}月${day}日`;
 }
 
+function convertToDbDate(frontDate){
+    const d = new Date(frontDate);
+    const y = d.getFullYear();
+    const m = d.getMonth()+1;
+    const day = d.getDate();
+    const dbDate = y + '-' + m + '-' + day;
+    console.log('数据库查询日期：', dbDate);
+    return dbDate;
+}
+
 let trendChart = echarts.init(document.getElementById('trendChart'));
 
 function getPast7Days() {
@@ -115,10 +126,13 @@ function getPast7Days() {
     for(let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
+        const frontFullDate = date.toISOString().split('T')[0];
+        const dbDate = convertToDbDate(frontFullDate);
         dates.push({
-            date: date.toLocaleDateString().replace(/\//g, '-'),
+            frontDate: frontFullDate,
+            dbDate: dbDate,
             formatted: `${date.getMonth() + 1}/${date.getDate()}`,
-            fullFormatted: formatDate(date.toLocaleDateString().replace(/\//g, '-'))
+            fullFormatted: formatDate(frontFullDate)
         });
     }
     return dates;
@@ -126,17 +140,14 @@ function getPast7Days() {
 
 async function loadWeeklyTrend() {
     const pastDays = getPast7Days();
-    const dates = pastDays.map(day => day.date);
-    const formattedDates = pastDays.map(day => day.formatted);
+    const scores = new Array(pastDays.length).fill(0);
     
-    const scores = new Array(dates.length).fill(0);
-    
-    const loadingPromises = dates.map(async (date, index) => {
+    const loadingPromises = pastDays.map(async (dayInfo, index) => {
         try {
-            const score = await loadDailyScore(u.userId, date);
+            const score = await loadDailyScore(userId, dayInfo.dbDate);
             scores[index] = score || 0;
         } catch (error) {
-            console.error(`加载${date}数据失败：`, error);
+            console.error(`加载${dayInfo.dbDate}数据失败：`, error);
             scores[index] = 0;
         }
     });
@@ -153,73 +164,39 @@ async function loadWeeklyTrend() {
                 return `${date}<br/>健康评分: ${score}`;
             }
         },
-        grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '3%',
-            containLabel: true
-        },
-        xAxis: {
-            type: 'category',
-            boundaryGap: false,
-            data: formattedDates,
-            axisLabel: {
-                color: '#666'
-            }
-        },
-        yAxis: {
-            type: 'value',
-            min: 0,
-            max: 100,
-            axisLabel: {
-                color: '#666',
-                formatter: '{value}'
-            }
-        },
+        grid: { left: '3%',right: '4%',bottom: '3%',containLabel: true },
+        xAxis: { type: 'category',boundaryGap: false,data: pastDays.map(d=>d.formatted) },
+        yAxis: { type: 'value',min:0,max:100 },
         series: [{
-            name: '健康评分',
-            type: 'line',
-            smooth: true,
-            data: scores,
-            lineStyle: {
-                color: '#667eea',
-                width: 3
-            },
-            itemStyle: {
-                color: '#667eea',
-                borderWidth: 2,
-                borderColor: '#fff'
-            },
-            areaStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: 'rgba(102, 126, 234, 0.3)' },
-                    { offset: 1, color: 'rgba(102, 126, 234, 0.05)' }
-                ])
-            }
+            name: '健康评分',type: 'line',smooth: true,data: scores,
+            lineStyle:{color:'#667eea',width:3},
+            areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[
+                {offset:0,color:'rgba(102,126,234,0.3)'},
+                {offset:1,color:'rgba(102,126,234,0.05)'}
+            ])}
         }]
     };
-    
     trendChart.setOption(chartOption);
 }
 
-async function loadDailyScore(userId, date) {
+async function loadDailyScore(userId, dbDate) {
     try {
-        const foodsResponse = await fetch('/get_user_foods', {
+        console.log('请求单日评分：user_id='+userId+' date='+dbDate);
+        const foodsResponse = await fetch('http://127.0.0.1:5000/get_user_foods', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, date: date })
+            body: JSON.stringify({ user_id: userId, date: dbDate })
         });
-        
         const foodsResult = await foodsResponse.json();
         const foods = foodsResult.data || [];
+        console.log('接口返回食材数量：', foods.length);
         if(foods.length === 0) return 0;
         
-        const nutritionResponse = await fetch('/get_total_nutri', {
+        const nutritionResponse = await fetch('http://127.0.0.1:5000/get_total_nutri', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ foods: foods, user_id: userId })
         });
-        
         const nutritionData = await nutritionResponse.json();
         return nutritionData.score || 0;
     } catch (error) {
@@ -229,31 +206,27 @@ async function loadDailyScore(userId, date) {
 }
 
 async function loadDateData() {
-    const selectedDate = document.getElementById('datePicker').value;
-    if(!selectedDate) {
-        alert('请选择日期！');
-        return;
-    }
-    
-    const date = new Date(selectedDate);
-    const formattedDate = date.toLocaleDateString().replace(/\//g, '-');
-    
-    document.getElementById('currentDateDisplay').innerText = `当前查看：${formatDate(formattedDate)}`;
+    const selectedFrontDate = document.getElementById('datePicker').value;
+    if(!selectedFrontDate) {alert('请选择日期！');return;}
+    const selectedDbDate = convertToDbDate(selectedFrontDate);
+    document.getElementById('currentDateDisplay').innerText = `当前查看：${formatDate(selectedFrontDate)}`;
     
     try {
-        const foodsResponse = await fetch('/get_user_foods', {
+        console.log('查询历史详情：user_id='+userId+' date='+selectedDbDate);
+        const foodsResponse = await fetch('http://127.0.0.1:5000/get_user_foods', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: u.userId, date: formattedDate })
+            body: JSON.stringify({ user_id: userId, date: selectedDbDate })
         });
         
         const foodsResult = await foodsResponse.json();
         const foods = foodsResult.data || [];
+        console.log('详情接口返回食材：', foods.length, foods);
         
-        const nutritionResponse = await fetch('/get_total_nutri', {
+        const nutritionResponse = await fetch('http://127.0.0.1:5000/get_total_nutri', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ foods: foods, user_id: u.userId })
+            body: JSON.stringify({ foods: foods, user_id: userId })
         });
         
         const nutritionData = await nutritionResponse.json();
@@ -269,22 +242,10 @@ function updateDailyDisplay(nutritionData, foods) {
     const score = nutritionData.score || 0;
     document.getElementById('dailyScore').innerText = score;
     
-    let level = '';
-    let levelColor = '';
-    
-    if(score >= 80) {
-        level = '优秀';
-        levelColor = '#38a169';
-    } else if(score >= 60) {
-        level = '合格';
-        levelColor = '#667eea';
-    } else {
-        level = '需改善';
-        levelColor = '#e53e3e';
-    }
-    
+    let level = score>=80?'优秀':score>=60?'合格':'需改善';
+    let color = score>=80?'#38a169':score>=60?'#667eea':'#e53e3e';
     document.getElementById('scoreLevel').innerText = level;
-    document.getElementById('scoreLevel').style.color = levelColor;
+    document.getElementById('scoreLevel').style.color = color;
     
     document.getElementById('dailyEnergy').innerText = nutritionData.energy || 0;
     document.getElementById('dailyProtein').innerText = nutritionData.protein || 0;
@@ -293,13 +254,12 @@ function updateDailyDisplay(nutritionData, foods) {
     document.getElementById('dailySodium').innerText = nutritionData.sodium || 0;
     
     const foodListHtml = document.getElementById('dailyFoodList');
-    
-    if(foods.length === 0) {
+    if(foods.length === 0){
         foodListHtml.innerHTML = '<div style="text-align:center;padding:20px;color:#999">该日期暂无食材记录</div>';
-    } else {
-        let html = '';
-        foods.forEach((food, index) => {
-            html += `
+    }else{
+        let html='';
+        foods.forEach(food=>{
+            html+=`
             <div class="food-item">
                 <div>
                     <div class="food-name">${food.name}</div>
@@ -312,17 +272,14 @@ function updateDailyDisplay(nutritionData, foods) {
             </div>
             `;
         });
-        foodListHtml.innerHTML = html;
+        foodListHtml.innerHTML=html;
     }
 }
 
 window.onload = function() {
     loadWeeklyTrend();
     loadDateData();
-    
-    window.addEventListener('resize', () => {
-        if(trendChart) trendChart.resize();
-    });
+    window.addEventListener('resize', ()=>trendChart.resize());
 };
 </script>
 </body>
