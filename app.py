@@ -50,10 +50,6 @@ class UserFood(db.Model):
     date = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-with app.app_context():
-    db.drop_all()       
-    db.create_all()  
-
 @app.route('/')
 @app.route('/index')
 @app.route('/index.html')
