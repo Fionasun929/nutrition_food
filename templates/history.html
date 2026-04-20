@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>历史数据 - 营养健康管理系统</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -12,7 +12,9 @@
     <div><h1>📈 历史数据分析</h1></div>
     <div class="user-info">
         <div class="avatar" id="av">U</div>
-        <div><div class="user-name" id="uname"></div></div>
+        <div>
+            <div class="user-name" id="uname"></div>
+        </div>
         <a href="javascript:logout()" class="btn-sm">退出登录</a>
     </div>
 </div>
@@ -24,6 +26,7 @@
 
 <div class="card">
     <h3>📅 日期详情查看</h3>
+    
     <div class="date-selector">
         <label for="datePicker">选择日期：</label>
         <input type="date" id="datePicker">
@@ -36,46 +39,59 @@
         <div style="font-size:48px;font-weight:bold;color:#667eea" id="dailyScore">--</div>
         <div style="font-size:14px" id="scoreLevel"></div>
     </div>
-
+    
     <div class="nutri-grid">
-        <div class="nutri-item"><div class="nutri-value" id="dailyEnergy">--</div><div class="nutri-label">热量 (kcal)</div></div>
-        <div class="nutri-item"><div class="nutri-value" id="dailyProtein">--</div><div class="nutri-label">蛋白质 (g)</div></div>
-        <div class="nutri-item"><div class="nutri-value" id="dailyFat">--</div><div class="nutri-label">脂肪 (g)</div></div>
-        <div class="nutri-item"><div class="nutri-value" id="dailyCarbs">--</div><div class="nutri-label">碳水 (g)</div></div>
-        <div class="nutri-item"><div class="nutri-value" id="dailySodium">--</div><div class="nutri-label">钠 (mg)</div></div>
+        <div class="nutri-item">
+            <div class="nutri-value" id="dailyEnergy">--</div>
+            <div class="nutri-label">热量 (kcal)</div>
+        </div>
+        <div class="nutri-item">
+            <div class="nutri-value" id="dailyProtein">--</div>
+            <div class="nutri-label">蛋白质 (g)</div>
+        </div>
+        <div class="nutri-item">
+            <div class="nutri-value" id="dailyFat">--</div>
+            <div class="nutri-label">脂肪 (g)</div>
+        </div>
+        <div class="nutri-item">
+            <div class="nutri-value" id="dailyCarbs">--</div>
+            <div class="nutri-label">碳水 (g)</div>
+        </div>
+        <div class="nutri-item">
+            <div class="nutri-value" id="dailySodium">--</div>
+            <div class="nutri-label">钠 (mg)</div>
+        </div>
     </div>
-
-    <div><h4 style="margin-bottom:12px">🍽️ 当日食材清单</h4><div class="food-list" id="dailyFoodList"></div></div>
+    
+    <div>
+        <h4 style="margin-bottom:12px">🍽️ 当日食材清单</h4>
+        <div class="food-list" id="dailyFoodList">
+            <div style="text-align:center;padding:20px;color:#999">请选择日期查看食材记录</div>
+        </div>
+    </div>
 </div>
 
 <div style="text-align:center;margin-top:20px">
     <a href="/index" class="btn">🏠 返回首页</a>
 </div>
+
 <div class="footer">数据来源：《中国食物成分表》</div>
 </div>
 
 <script>
 const u = JSON.parse(localStorage.getItem('currentUser'));
 if(!u)location.href='/login';
-const userId = u.user_id || u.userId;
+
+const userId = u.user_id || u.userId; 
+console.log('当前登录用户ID：', userId);
+
 const todayFormatted = new Date().toISOString().split('T')[0];
-let trendChart;
 
-window.onload = function(){
-    document.getElementById('uname').innerText = u.username;
-    document.getElementById('av').innerText = u.username.charAt(0).toUpperCase();
-    document.getElementById('datePicker').value = todayFormatted;
-    document.getElementById('currentDateDisplay').innerText = `当前查看：${formatDate(todayFormatted)}`;
-    trendChart = echarts.init(document.getElementById('trendChart'));
-    loadWeeklyTrend();
-    loadDateData();
-    window.addEventListener('resize',()=>trendChart.resize());
-};
+document.getElementById('uname').innerText = u.username;
+document.getElementById('av').innerText = u.username.charAt(0).toUpperCase();
 
-function formatDate(dateString){
-    const date = new Date(dateString);
-    return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日`;
-}
+document.getElementById('datePicker').value = todayFormatted;
+document.getElementById('currentDateDisplay').innerText = `当前查看：${formatDate(todayFormatted)}`;
 
 function logout(){
     if(confirm('确认退出？')){
@@ -84,77 +100,187 @@ function logout(){
     }
 }
 
-function getPast7Days(){
-    const dates=[];
-    const today=new Date();
-    for(let i=6;i>=0;i--){
-        const d=new Date(today);
-        d.setDate(d.getDate()-i);
-        const full=d.toISOString().split('T')[0];
-        dates.push({date:full,formatted:`${d.getMonth()+1}/${d.getDate()}`,fullFormatted:formatDate(full)});
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${year}年${month}月${day}日`;
+}
+
+function convertToDbDate(frontDate){
+    const d = new Date(frontDate);
+    const y = d.getFullYear();
+    const m = d.getMonth()+1;
+    const day = d.getDate();
+    const dbDate = y + '-' + m + '-' + day;
+    console.log('数据库查询日期：', dbDate);
+    return dbDate;
+}
+
+let trendChart = echarts.init(document.getElementById('trendChart'));
+
+function getPast7Days() {
+    const dates = [];
+    const today = new Date();
+    for(let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const frontFullDate = date.toISOString().split('T')[0];
+        const dbDate = convertToDbDate(frontFullDate);
+        dates.push({
+            frontDate: frontFullDate,
+            dbDate: dbDate,
+            formatted: `${date.getMonth() + 1}/${date.getDate()}`,
+            fullFormatted: formatDate(frontFullDate)
+        });
     }
     return dates;
 }
 
-async function loadWeeklyTrend(){
-    const pastDays=getPast7Days();
-    const scores=[];
-    for(let day of pastDays){
-        try{
-            const r1=await fetch('/get_user_foods',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:userId,date:day.date})});
-            const foods=(await r1.json()).data||[];
-            if(foods.length===0){scores.push(0);continue;}
-            const r2=await fetch('/get_total_nutri',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({foods,user_id:userId})});
-            scores.push((await r2.json()).score||0);
-        }catch{e.push(0);}
-    }
-
-    trendChart.setOption({
-        tooltip:{trigger:'axis',formatter:(params)=>`${pastDays[params[0].dataIndex].fullFormatted}<br/>健康评分: ${params[0].value}`},
-        grid:{left:'3%',right:'4%',bottom:'3%',containLabel:true},
-        xAxis:{type:'category',boundaryGap:false,data:pastDays.map(d=>d.formatted),axisLabel:{color:'#666'}},
-        yAxis:{type:'value',min:0,max:100,axisLabel:{color:'#666'}},
-        series:[{
-            name:'健康评分',type:'line',smooth:true,data:scores,
+async function loadWeeklyTrend() {
+    const pastDays = getPast7Days();
+    const scores = new Array(pastDays.length).fill(0);
+    
+    const loadingPromises = pastDays.map(async (dayInfo, index) => {
+        try {
+            const score = await loadDailyScore(userId, dayInfo.dbDate);
+            scores[index] = score || 0;
+        } catch (error) {
+            console.error(`加载${dayInfo.dbDate}数据失败：`, error);
+            scores[index] = 0;
+        }
+    });
+    
+    await Promise.all(loadingPromises);
+    
+    const chartOption = {
+        tooltip: {
+            trigger: 'axis',
+            formatter: function(params) {
+                const index = params[0].dataIndex;
+                const date = pastDays[index].fullFormatted;
+                const score = params[0].value;
+                return `${date}<br/>健康评分: ${score}`;
+            }
+        },
+        grid: { left: '3%',right: '4%',bottom: '3%',containLabel: true },
+        xAxis: { type: 'category',boundaryGap: false,data: pastDays.map(d=>d.formatted) },
+        yAxis: { type: 'value',min:0,max:100 },
+        series: [{
+            name: '健康评分',type: 'line',smooth: true,data: scores,
             lineStyle:{color:'#667eea',width:3},
-            itemStyle:{color:'#667eea',borderWidth:2,borderColor:'#fff'},
             areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[
                 {offset:0,color:'rgba(102,126,234,0.3)'},
                 {offset:1,color:'rgba(102,126,234,0.05)'}
             ])}
         }]
-    });
+    };
+    trendChart.setOption(chartOption);
 }
 
-async function loadDateData(){
-    const date=document.getElementById('datePicker').value;
-    if(!date){alert('请选择日期！');return;}
-    document.getElementById('currentDateDisplay').innerText=`当前查看：${formatDate(date)}`;
-    try{
-        const r1=await fetch('/get_user_foods',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:userId,date})});
-        const foods=(await r1.json()).data||[];
-        const r2=await fetch('/get_total_nutri',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({foods,user_id:userId})});
-        const data=await r2.json();
+async function loadDailyScore(userId, dbDate) {
+    try {
+        console.log('请求单日评分：user_id='+userId+' date='+dbDate);
+        const foodsResponse = await fetch('http://127.0.0.1:5000/get_user_foods', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, date: dbDate })
+        });
+        const foodsResult = await foodsResponse.json();
+        const foods = foodsResult.data || [];
+        console.log('接口返回食材数量：', foods.length);
+        if(foods.length === 0) return 0;
         
-        document.getElementById('dailyScore').innerText=data.score||0;
-        const score=data.score||0;
-        const level=score>=80?'优秀':score>=60?'合格':'需改善';
-        const color=score>=80?'#38a169':score>=60?'#667eea':'#e53e3e';
-        document.getElementById('scoreLevel').innerText=level;
-        document.getElementById('scoreLevel').style.color=color;
-
-        document.getElementById('dailyEnergy').innerText=data.energy||0;
-        document.getElementById('dailyProtein').innerText=data.protein||0;
-        document.getElementById('dailyFat').innerText=data.fat||0;
-        document.getElementById('dailyCarbs').innerText=data.carbs||0;
-        document.getElementById('dailySodium').innerText=data.sodium||0;
-
-        let html='';
-        if(foods.length===0)html='<div style="text-align:center;padding:20px;color:#999">暂无记录</div>';
-        else foods.forEach(f=>{html+=`<div class="food-item"><div><div class="food-name">${f.name}</div><div class="food-weight">${f.weight}g</div></div><div><div style="font-weight:bold">${(f.foodData.energy*f.weight/100).toFixed(1)} kcal</div><div style="font-size:12px;color:#666">${f.meal}</div></div></div>`;});
-        document.getElementById('dailyFoodList').innerHTML=html;
-    }catch(e){alert('加载数据失败');}
+        const nutritionResponse = await fetch('http://127.0.0.1:5000/get_total_nutri', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ foods: foods, user_id: userId })
+        });
+        const nutritionData = await nutritionResponse.json();
+        return nutritionData.score || 0;
+    } catch (error) {
+        console.error('加载单日评分失败：', error);
+        return 0;
+    }
 }
+
+async function loadDateData() {
+    const selectedFrontDate = document.getElementById('datePicker').value;
+    if(!selectedFrontDate) {alert('请选择日期！');return;}
+    const selectedDbDate = convertToDbDate(selectedFrontDate);
+    document.getElementById('currentDateDisplay').innerText = `当前查看：${formatDate(selectedFrontDate)}`;
+    
+    try {
+        console.log('查询历史详情：user_id='+userId+' date='+selectedDbDate);
+        const foodsResponse = await fetch('/get_user_foods', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, date: selectedDbDate })
+        });
+        
+        const foodsResult = await foodsResponse.json();
+        const foods = foodsResult.data || [];
+        console.log('详情接口返回食材：', foods.length, foods);
+        
+        const nutritionResponse = await fetch('/get_total_nutri', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ foods: foods, user_id: userId })
+        });
+        
+        const nutritionData = await nutritionResponse.json();
+        updateDailyDisplay(nutritionData, foods);
+        
+    } catch (error) {
+        console.error('加载日期数据失败：', error);
+        alert('加载数据失败');
+    }
+}
+
+function updateDailyDisplay(nutritionData, foods) {
+    const score = nutritionData.score || 0;
+    document.getElementById('dailyScore').innerText = score;
+    
+    let level = score>=80?'优秀':score>=60?'合格':'需改善';
+    let color = score>=80?'#38a169':score>=60?'#667eea':'#e53e3e';
+    document.getElementById('scoreLevel').innerText = level;
+    document.getElementById('scoreLevel').style.color = color;
+    
+    document.getElementById('dailyEnergy').innerText = nutritionData.energy || 0;
+    document.getElementById('dailyProtein').innerText = nutritionData.protein || 0;
+    document.getElementById('dailyFat').innerText = nutritionData.fat || 0;
+    document.getElementById('dailyCarbs').innerText = nutritionData.carbs || 0;
+    document.getElementById('dailySodium').innerText = nutritionData.sodium || 0;
+    
+    const foodListHtml = document.getElementById('dailyFoodList');
+    if(foods.length === 0){
+        foodListHtml.innerHTML = '<div style="text-align:center;padding:20px;color:#999">该日期暂无食材记录</div>';
+    }else{
+        let html='';
+        foods.forEach(food=>{
+            html+=`
+            <div class="food-item">
+                <div>
+                    <div class="food-name">${food.name}</div>
+                    <div class="food-weight">${food.weight}g</div>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-weight:bold;color:#667eea">${(food.foodData.energy * food.weight / 100).toFixed(1)} kcal</div>
+                    <div style="font-size:12px;color:#666">${food.meal}</div>
+                </div>
+            </div>
+            `;
+        });
+        foodListHtml.innerHTML=html;
+    }
+}
+
+window.onload = function() {
+    loadWeeklyTrend();
+    loadDateData();
+    window.addEventListener('resize', ()=>trendChart.resize());
+};
 </script>
 </body>
 </html>
