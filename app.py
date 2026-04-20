@@ -374,7 +374,8 @@ def search_food():
     kw = str(request.json.get('keyword', '')).strip()
     user_id = request.json.get('user_id')
 
-    HIDE_FOOD_IDS = list(range(1590, 1782))
+    HIDE_START = 1590
+    HIDE_END = 1781
     hide_restricted = True
 
     if user_id:
@@ -390,7 +391,7 @@ def search_food():
     )
 
     if hide_restricted:
-        query = query.filter(~Food.id.in_(HIDE_FOOD_IDS))
+        query = query.filter(Food.id < HIDE_START, Food.id > HIDE_END)
 
     foods = query.limit(30).all()
 
@@ -757,7 +758,8 @@ def get_advice_data():
 
         food_contrib = sorted(food_contrib, key=lambda x: x["score"], reverse=True)
 
-        HIDE_FOOD_IDS = list(range(1590, 1782))
+        HIDE_START = 1590
+        HIDE_END = 1781
         hide_restricted = True
         if user:
             a = user.age_start
@@ -767,7 +769,7 @@ def get_advice_data():
 
         all_foods_query = Food.query
         if hide_restricted:
-            all_foods_query = all_foods_query.filter(~Food.id.in_(HIDE_FOOD_IDS))
+            all_foods_query = all_foods_query.filter(Food.id < HIDE_START, Food.id > HIDE_END)
         all_foods = all_foods_query.all()
 
         food_list = []
@@ -783,20 +785,20 @@ def get_advice_data():
 
         priority_list = []
         if abs(pct["protein"]) >= 20:
-            priority_list.append( (abs(pct["protein"]), "protein", True) )
+            priority_list.append( (abs(pct["protein"]), "protein") )
         if abs(pct["energy"]) >= 20:
-            priority_list.append( (abs(pct["energy"]), "energy", True) )
+            priority_list.append( (abs(pct["energy"]), "energy") )
         if abs(pct["fat"]) >= 20:
-            priority_list.append( (abs(pct["fat"]), "fat", True) )
+            priority_list.append( (abs(pct["fat"]), "fat") )
         if abs(pct["carbs"]) >= 20:
-            priority_list.append( (abs(pct["carbs"]), "carbs", True) )
+            priority_list.append( (abs(pct["carbs"]), "carbs") )
         if abs(pct["sodium"]) >= 20:
-            priority_list.append( (abs(pct["sodium"]), "sodium", False) )
+            priority_list.append( (abs(pct["sodium"]), "sodium") )
 
         priority_list = sorted(priority_list, key=lambda x: x[0], reverse=True)
 
         rec = {}
-        for abs_pct, key, is_supplement in priority_list:
+        for abs_pct, key in priority_list:
             if key == "protein":
                 rec["protein"] = sorted(food_list, key=lambda x: x["protein"], reverse=True)[:6]
             elif key == "energy":
@@ -820,36 +822,7 @@ def get_advice_data():
         print("Advice Error:", e)
         return jsonify({"code": 0})
 
-@app.route('/get_index_recommend', methods=['POST'])
-def get_index_recommend():
-    try:
-        user_id = request.json.get('user_id')
-        all_foods = Food.query.all()
-        data = []
-        for f in all_foods:
-            data.append({
-                "name": f.name,
-                "energy": round(f.energy,1),
-                "protein": round(f.protein,1),
-                "fat": round(f.fat,1),
-                "carbs": round(f.carbs,1),
-                "sodium": round(f.sodium,1)
-            })
 
-        top_energy = sorted(data, key=lambda x: x["energy"], reverse=True)[:3]
-        top_protein = sorted(data, key=lambda x: x["protein"], reverse=True)[:3]
-        top_fat = sorted(data, sorted(data, key=lambda x: x["fat"], reverse=True)[:3])
-        top_carbs = sorted(data, key=lambda x: x["carbs"], reverse=True)[:3]
-
-        return jsonify({
-            "energy": top_energy,
-            "protein": top_protein,
-            "fat": top_fat,
-            "carbs": top_carbs
-        })
-    except:
-        return jsonify({"code":0})
-    
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
