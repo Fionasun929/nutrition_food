@@ -126,8 +126,12 @@ function getPast7Days() {
     for(let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
+        const y = date.getFullYear();
+        const m = date.getMonth() + 1;
+        const d = date.getDate();
+        const dbDate = `${y}-${m}-${d}`;
         const frontFullDate = date.toISOString().split('T')[0];
-        const dbDate = convertToDbDate(frontFullDate);
+        
         dates.push({
             frontDate: frontFullDate,
             dbDate: dbDate,
