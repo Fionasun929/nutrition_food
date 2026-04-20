@@ -391,7 +391,7 @@ def search_food():
     )
 
     if hide_restricted:
-        query = query.filter(Food.id < HIDE_START, Food.id > HIDE_END)
+        query = query.filter( (Food.id < HIDE_START) | (Food.id > HIDE_END) )
 
     foods = query.limit(30).all()
 
