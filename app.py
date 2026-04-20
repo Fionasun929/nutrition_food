@@ -16,11 +16,7 @@ app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://untritioner:NkFhEKI4jCFwO4vmFwtDIHJVDHXmffLb@dpg-d7e6hpe7r5hc73a6uou0-a/nutrition_food'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-
-with app.app_context():
-    db.drop_all()       
-    db.create_all()    
+db = SQLAlchemy(app)  
 
 TYPE_NUTRITION_STANDARD = {}
 
@@ -53,6 +49,10 @@ class UserFood(db.Model):
     meal = db.Column(db.String(50))
     date = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+with app.app_context():
+    db.drop_all()       
+    db.create_all()  
 
 @app.route('/')
 @app.route('/index')
