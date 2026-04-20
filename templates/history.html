@@ -182,7 +182,7 @@ async function loadWeeklyTrend() {
 async function loadDailyScore(userId, dbDate) {
     try {
         console.log('请求单日评分：user_id='+userId+' date='+dbDate);
-        const foodsResponse = await fetch('http://127.0.0.1:5000/get_user_foods', {
+        const foodsResponse = await fetch('/get_user_foods', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, date: dbDate })
@@ -192,7 +192,7 @@ async function loadDailyScore(userId, dbDate) {
         console.log('接口返回食材数量：', foods.length);
         if(foods.length === 0) return 0;
         
-        const nutritionResponse = await fetch('http://127.0.0.1:5000/get_total_nutri', {
+        const nutritionResponse = await fetch('/get_total_nutri', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ foods: foods, user_id: userId })
