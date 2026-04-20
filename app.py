@@ -823,6 +823,17 @@ def get_advice_data():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        if not Food.query.first(): 
+            try:
+                db.session.query(Food).delete() 
+                db.session.commit()
+            except:
+                db.session.rollback()
+
+            load_type_csv()
+            init_food() 
+
         load_type_csv()
+
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
