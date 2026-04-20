@@ -758,22 +758,13 @@ def get_advice_data():
 
         food_contrib = sorted(food_contrib, key=lambda x: x["score"], reverse=True)
 
-        HIDE_START = 1590
-        HIDE_END = 1781
-        hide_restricted = True
-        if user:
-            a = user.age_start
-            b = user.age_end
-            if (a == 0.0 and b == 0.5) or (a == 0.5 and b == 1.0) or (a == 1.0 and b == 3.0):
-                hide_restricted = False
-
-        all_foods_query = Food.query
-        if hide_restricted:
-            all_foods_query = all_foods_query.filter(Food.id < HIDE_START, Food.id > HIDE_END)
-        all_foods = all_foods_query.all()
-
         food_list = []
+        all_foods = Food.query.all()
+        
         for fd in all_foods:
+            if 1590 <= fd.id <= 1781:
+                continue
+            
             food_list.append({
                 "name": fd.name,
                 "energy": fd.energy,
@@ -800,15 +791,20 @@ def get_advice_data():
         rec = {}
         for abs_pct, key in priority_list:
             if key == "protein":
-                rec["protein"] = sorted(food_list, key=lambda x: x["protein"], reverse=True)[:6]
+                lst = sorted(food_list, key=lambda x: x["protein"], reverse=True)[:6]
             elif key == "energy":
-                rec["energy"] = sorted(food_list, key=lambda x: x["energy"], reverse=True)[:6]
+                lst = sorted(food_list, key=lambda x: x["energy"], reverse=True)[:6]
             elif key == "fat":
-                rec["fat"] = sorted(food_list, key=lambda x: x["fat"], reverse=True)[:6]
+                lst = sorted(food_list, key=lambda x: x["fat"], reverse=True)[:6]
             elif key == "carbs":
-                rec["carbs"] = sorted(food_list, key=lambda x: x["carbs"], reverse=True)[:6]
+                lst = sorted(food_list, key=lambda x: x["carbs"], reverse=True)[:6]
             elif key == "sodium":
-                rec["sodium"] = sorted(food_list, key=lambda x: x["sodium"])[:6]
+                lst = sorted(food_list, key=lambda x: x["sodium"])[:6]
+            else:
+                lst = []
+            
+            if len(lst) > 0:
+                rec[key] = lst
 
         return jsonify({
             "current": {"energy": round(e,1), "protein": round(p,1), "fat": round(f,1), "carbs": round(c,1), "sodium": round(s,1)},
@@ -818,6 +814,7 @@ def get_advice_data():
             "foods": food_contrib,
             "recommend": rec
         })
+        
     except Exception as e:
         print("Advice Error:", e)
         return jsonify({"code": 0})
