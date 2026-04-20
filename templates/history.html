@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>历史数据 - 营养健康管理系统</title>
-<link rel="stylesheet" href="style.css">
+<!-- 🔴 修复1：模板必须用 static 路径 → 样式恢复！-->
+<link rel="stylesheet" href="/static/style.css">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -72,7 +73,7 @@
 </div>
 
 <div style="text-align:center;margin-top:20px">
-    <a href="index.html" class="btn">🏠 返回首页</a>
+    <a href="/index" class="btn">🏠 返回首页</a>
 </div>
 
 <div class="footer">数据来源：《中国食物成分表》</div>
@@ -80,23 +81,22 @@
 
 <script>
 const u = JSON.parse(localStorage.getItem('currentUser'));
-if(!u)location.href='login.html';
+if(!u)location.href='/login';
 
-const userId = u.user_id || u.userId; 
-console.log('当前登录用户ID：', userId);
+// 🔴 修复2：兼容 user_id 字段
+const userId = u.user_id || u.userId;
+console.log('用户ID：', userId);
 
 const todayFormatted = new Date().toISOString().split('T')[0];
-
 document.getElementById('uname').innerText = u.username;
 document.getElementById('av').innerText = u.username.charAt(0).toUpperCase();
-
 document.getElementById('datePicker').value = todayFormatted;
 document.getElementById('currentDateDisplay').innerText = `当前查看：${formatDate(todayFormatted)}`;
 
 function logout(){
     if(confirm('确认退出？')){
         localStorage.removeItem('currentUser');
-        location.href='login.html';
+        location.href='/login';
     }
 }
 
@@ -108,31 +108,19 @@ function formatDate(dateString) {
     return `${year}年${month}月${day}日`;
 }
 
-function convertToDbDate(frontDate){
-    const d = new Date(frontDate);
-    const y = d.getFullYear();
-    const m = d.getMonth()+1;
-    const day = d.getDate();
-    const dbDate = y + '-' + m + '-' + day;
-    console.log('数据库查询日期：', dbDate);
-    return dbDate;
-}
-
 let trendChart = echarts.init(document.getElementById('trendChart'));
 
 function getPast7Days() {
     const dates = [];
     const today = new Date();
-    for(let i = 6; i >= 0; i--) {
+    for(let i=6;i>=0;i--){
         const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const frontFullDate = date.toISOString().split('T')[0];
-        const dbDate = convertToDbDate(frontFullDate);
+        date.setDate(date.getDate()-i);
+        const fullDate = date.toISOString().split('T')[0];
         dates.push({
-            frontDate: frontFullDate,
-            dbDate: dbDate,
-            formatted: `${date.getMonth() + 1}/${date.getDate()}`,
-            fullFormatted: formatDate(frontFullDate)
+            date: fullDate,
+            formatted: `${date.getMonth()+1}/${date.getDate()}`,
+            fullFormatted: formatDate(fullDate)
         });
     }
     return dates;
@@ -140,146 +128,113 @@ function getPast7Days() {
 
 async function loadWeeklyTrend() {
     const pastDays = getPast7Days();
-    const scores = new Array(pastDays.length).fill(0);
-    
-    const loadingPromises = pastDays.map(async (dayInfo, index) => {
+    const scores = [];
+    for(let day of pastDays){
         try {
-            const score = await loadDailyScore(userId, dayInfo.dbDate);
-            scores[index] = score || 0;
-        } catch (error) {
-            console.error(`加载${dayInfo.dbDate}数据失败：`, error);
-            scores[index] = 0;
+            scores.push(await loadDailyScore(userId, day.date));
+        }catch(e){
+            scores.push(0);
         }
-    });
-    
-    await Promise.all(loadingPromises);
-    
-    const chartOption = {
-        tooltip: {
-            trigger: 'axis',
-            formatter: function(params) {
-                const index = params[0].dataIndex;
-                const date = pastDays[index].fullFormatted;
-                const score = params[0].value;
-                return `${date}<br/>健康评分: ${score}`;
-            }
-        },
-        grid: { left: '3%',right: '4%',bottom: '3%',containLabel: true },
-        xAxis: { type: 'category',boundaryGap: false,data: pastDays.map(d=>d.formatted) },
-        yAxis: { type: 'value',min:0,max:100 },
-        series: [{
-            name: '健康评分',type: 'line',smooth: true,data: scores,
-            lineStyle:{color:'#667eea',width:3},
-            areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[
-                {offset:0,color:'rgba(102,126,234,0.3)'},
-                {offset:1,color:'rgba(102,126,234,0.05)'}
-            ])}
+    }
+
+    trendChart.setOption({
+        tooltip:{trigger:'axis'},
+        xAxis:{type:'category',data:pastDays.map(d=>d.formatted)},
+        yAxis:{type:'value',min:0,max:100},
+        series:[{
+            type:'line',smooth:true,data:scores,
+            lineStyle:{color:'#667eea'},
+            areaStyle:{color:'rgba(102,126,234,0.2)'}
         }]
-    };
-    trendChart.setOption(chartOption);
+    });
 }
 
-async function loadDailyScore(userId, dbDate) {
+// 🔴 修复3：接口使用 相对路径 /api （正式部署必须！）
+async function loadDailyScore(userId, date) {
     try {
-        console.log('请求单日评分：user_id='+userId+' date='+dbDate);
-        const foodsResponse = await fetch('http://127.0.0.1:5000/get_user_foods', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, date: dbDate })
+        const r1 = await fetch('/get_user_foods', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({user_id:userId, date:date})
         });
-        const foodsResult = await foodsResponse.json();
-        const foods = foodsResult.data || [];
-        console.log('接口返回食材数量：', foods.length);
-        if(foods.length === 0) return 0;
-        
-        const nutritionResponse = await fetch('http://127.0.0.1:5000/get_total_nutri', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ foods: foods, user_id: userId })
+        const foods = (await r1.json()).data || [];
+        if(foods.length===0)return 0;
+
+        const r2 = await fetch('/get_total_nutri', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({foods:foods, user_id:userId})
         });
-        const nutritionData = await nutritionResponse.json();
-        return nutritionData.score || 0;
-    } catch (error) {
-        console.error('加载单日评分失败：', error);
-        return 0;
-    }
+        return (await r2.json()).score || 0;
+    }catch(e){return 0;}
 }
 
 async function loadDateData() {
-    const selectedFrontDate = document.getElementById('datePicker').value;
-    if(!selectedFrontDate) {alert('请选择日期！');return;}
-    const selectedDbDate = convertToDbDate(selectedFrontDate);
-    document.getElementById('currentDateDisplay').innerText = `当前查看：${formatDate(selectedFrontDate)}`;
-    
+    const date = document.getElementById('datePicker').value;
+    if(!date){alert('请选择日期');return;}
+    document.getElementById('currentDateDisplay').innerText = `当前查看：${formatDate(date)}`;
+
     try {
-        console.log('查询历史详情：user_id='+userId+' date='+selectedDbDate);
-        const foodsResponse = await fetch('http://127.0.0.1:5000/get_user_foods', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, date: selectedDbDate })
+        // 🔴 修复4：正式环境相对路径
+        const r1 = await fetch('/get_user_foods', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({user_id:userId, date:date})
         });
-        
-        const foodsResult = await foodsResponse.json();
-        const foods = foodsResult.data || [];
-        console.log('详情接口返回食材：', foods.length, foods);
-        
-        const nutritionResponse = await fetch('http://127.0.0.1:5000/get_total_nutri', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ foods: foods, user_id: userId })
+        const foods = (await r1.json()).data || [];
+
+        const r2 = await fetch('/get_total_nutri', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({foods:foods, user_id:userId})
         });
-        
-        const nutritionData = await nutritionResponse.json();
-        updateDailyDisplay(nutritionData, foods);
-        
-    } catch (error) {
-        console.error('加载日期数据失败：', error);
+        const data = await r2.json();
+        updateDisplay(data, foods);
+    }catch(e){
         alert('加载数据失败');
     }
 }
 
-function updateDailyDisplay(nutritionData, foods) {
-    const score = nutritionData.score || 0;
-    document.getElementById('dailyScore').innerText = score;
-    
-    let level = score>=80?'优秀':score>=60?'合格':'需改善';
-    let color = score>=80?'#38a169':score>=60?'#667eea':'#e53e3e';
+function updateDisplay(data, foods){
+    document.getElementById('dailyScore').innerText = data.score || 0;
+    const score = data.score || 0;
+    const level = score>=80?'优秀':score>=60?'合格':'需改善';
+    const color = score>=80?'#38a169':score>=60?'#667eea':'#e53e3e';
     document.getElementById('scoreLevel').innerText = level;
     document.getElementById('scoreLevel').style.color = color;
-    
-    document.getElementById('dailyEnergy').innerText = nutritionData.energy || 0;
-    document.getElementById('dailyProtein').innerText = nutritionData.protein || 0;
-    document.getElementById('dailyFat').innerText = nutritionData.fat || 0;
-    document.getElementById('dailyCarbs').innerText = nutritionData.carbs || 0;
-    document.getElementById('dailySodium').innerText = nutritionData.sodium || 0;
-    
-    const foodListHtml = document.getElementById('dailyFoodList');
-    if(foods.length === 0){
-        foodListHtml.innerHTML = '<div style="text-align:center;padding:20px;color:#999">该日期暂无食材记录</div>';
-    }else{
-        let html='';
-        foods.forEach(food=>{
-            html+=`
-            <div class="food-item">
-                <div>
-                    <div class="food-name">${food.name}</div>
-                    <div class="food-weight">${food.weight}g</div>
-                </div>
-                <div style="text-align:right">
-                    <div style="font-weight:bold;color:#667eea">${(food.foodData.energy * food.weight / 100).toFixed(1)} kcal</div>
-                    <div style="font-size:12px;color:#666">${food.meal}</div>
-                </div>
-            </div>
-            `;
-        });
-        foodListHtml.innerHTML=html;
+
+    document.getElementById('dailyEnergy').innerText = data.energy || 0;
+    document.getElementById('dailyProtein').innerText = data.protein || 0;
+    document.getElementById('dailyFat').innerText = data.fat || 0;
+    document.getElementById('dailyCarbs').innerText = data.carbs || 0;
+    document.getElementById('dailySodium').innerText = data.sodium || 0;
+
+    if(foods.length===0){
+        document.getElementById('dailyFoodList').innerHTML = '<div style="text-align:center;padding:20px">暂无记录</div>';
+        return;
     }
+
+    let html = '';
+    foods.forEach(f=>{
+        html+=`
+        <div class="food-item">
+            <div>
+                <div class="food-name">${f.name}</div>
+                <div class="food-weight">${f.weight}g</div>
+            </div>
+            <div>
+                <div style="font-weight:bold">${(f.foodData.energy*f.weight/100).toFixed(1)} kcal</div>
+                <div style="font-size:12px;color:#666">${f.meal}</div>
+            </div>
+        </div>`;
+    });
+    document.getElementById('dailyFoodList').innerHTML = html;
 }
 
-window.onload = function() {
+window.onload = function(){
     loadWeeklyTrend();
     loadDateData();
-    window.addEventListener('resize', ()=>trendChart.resize());
+    window.addEventListener('resize',()=>trendChart.resize());
 };
 </script>
 </body>
